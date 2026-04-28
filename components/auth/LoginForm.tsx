@@ -65,7 +65,7 @@ export function LoginForm() {
       <form onSubmit={handleSubmit(onSubmit)}>
         <CardContent className="space-y-4">
           {showDeactivatedMessage && (
-            <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+            <p className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
               Account deactivated successfully. You can sign in again within 30 days to restore it.
             </p>
           )}

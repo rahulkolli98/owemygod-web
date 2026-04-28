@@ -329,7 +329,7 @@ export function DashboardClient() {
           {metricsLoading ? (
             <Skeleton className="h-8 w-28 mt-1" />
           ) : (
-            <p className={`text-2xl font-bold ${netBalance >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive"}`}>
+            <p className={`text-2xl font-bold ${netBalance >= 0 ? "text-success" : "text-destructive"}`}>
               {`${netBalance >= 0 ? "+" : "-"}${formatCurrency(netBalance, currency)}`}
             </p>
           )}
@@ -377,9 +377,13 @@ export function DashboardClient() {
           ) : (
             <div className="overflow-x-auto">
               <div className="flex items-end gap-4 pb-1">
-                {monthlyPoints.map((point) => {
+                {monthlyPoints.map((point, index) => {
                   const label = `${MONTH_LABELS[point.month - 1]} '${String(point.year).slice(2)}`;
                   const barHeight = Math.max(Math.round((point.totalAmount / maxMonthlyAmount) * BAR_MAX_PX), 4);
+                  const barClass =
+                    index % 2 === 0
+                      ? "bg-chart-1/90"
+                      : "bg-chart-2/90";
 
                   return (
                     <div key={point.monthKey} className="flex shrink-0 flex-col items-center gap-1 w-16 sm:w-20">
@@ -388,7 +392,7 @@ export function DashboardClient() {
                       </p>
                       <div className="flex w-full items-end justify-center" style={{ height: BAR_MAX_PX }}>
                         <div
-                          className="w-9 rounded-t-md bg-primary/80 transition-colors sm:w-11"
+                          className={`w-9 rounded-t-md transition-colors sm:w-11 ${barClass}`}
                           style={{ height: barHeight }}
                         />
                       </div>

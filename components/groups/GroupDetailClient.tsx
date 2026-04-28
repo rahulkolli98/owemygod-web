@@ -378,13 +378,13 @@ export function GroupDetailClient({ group, onExpenseDeleted }: GroupDetailClient
 
           {owedToYou > 0 && (
             <div className="space-y-1">
-              <p className="text-lg font-semibold text-green-600 dark:text-green-400">
+              <p className="text-lg font-semibold text-success">
                 You get back {formatCurrency(owedToYou, currencyCode)} overall
               </p>
               <div className="space-y-0.5">
                 {oweYouList.map((item) => (
                   <p key={`owes-you-${item.name}`} className="text-sm text-muted-foreground">
-                    {item.name} owes you <span className="text-green-600 dark:text-green-400">{formatCurrency(item.amount, currencyCode)}</span>
+                    {item.name} owes you <span className="text-success">{formatCurrency(item.amount, currencyCode)}</span>
                   </p>
                 ))}
               </div>
@@ -642,7 +642,7 @@ export function GroupDetailClient({ group, onExpenseDeleted }: GroupDetailClient
                             className="flex w-full items-center justify-between rounded-lg border border-border px-3 py-2 text-left hover:bg-muted/50"
                           >
                             <p className="text-sm text-foreground">{item.name}</p>
-                            <p className="text-sm font-semibold text-green-600 dark:text-green-400">{formatCurrency(item.amount, currencyCode)}</p>
+                            <p className="text-sm font-semibold text-success">{formatCurrency(item.amount, currencyCode)}</p>
                           </button>
                         ))}
                       </div>
@@ -765,7 +765,7 @@ export function GroupDetailClient({ group, onExpenseDeleted }: GroupDetailClient
                     <p className="text-sm text-foreground">
                       <span className="font-medium">{summary.member}</span>
                       <span className="text-muted-foreground"> </span>
-                      <span className={summary.net < 0 ? "text-destructive" : "text-green-600 dark:text-green-400"}>
+                      <span className={summary.net < 0 ? "text-destructive" : "text-success"}>
                         {summary.net < 0 ? "owes" : "gets back"} {formatCurrency(Math.abs(summary.net), currencyCode)}
                       </span>
                       <span className="text-muted-foreground"> in total</span>
@@ -775,7 +775,7 @@ export function GroupDetailClient({ group, onExpenseDeleted }: GroupDetailClient
                       {summary.details.map((detail) => (
                         <div key={detail.id} className="flex items-center justify-between text-xs text-muted-foreground">
                           <p>{detail.label}</p>
-                          <p className={detail.tone === "owes" ? "text-destructive" : "text-green-600 dark:text-green-400"}>
+                          <p className={detail.tone === "owes" ? "text-destructive" : "text-success"}>
                             {formatCurrency(detail.amount, currencyCode)}
                           </p>
                         </div>

@@ -422,7 +422,7 @@ export function ProfileForm() {
           </div>
 
           {submitError ? <p className="text-sm text-destructive">{submitError}</p> : null}
-          {submitSuccess ? <p className="text-sm text-emerald-600">{submitSuccess}</p> : null}
+          {submitSuccess ? <p className="text-sm text-success">{submitSuccess}</p> : null}
         </CardContent>
 
         <CardFooter className="flex flex-col gap-3 sm:flex-row sm:justify-between">
