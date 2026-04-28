@@ -4,6 +4,12 @@ import { useEffect, useState } from "react";
 
 import { getApiErrorMessage } from "@/lib/auth-api";
 import {
+  getAllGroupsCategoryBreakdownMetric,
+  getAllGroupsMonthlyExpensesMetric,
+  getAllGroupsNetBalanceMetric,
+  getAllGroupsTopCategoryMetric,
+  getAllGroupsTotalSpentMetric,
+  getAllGroupsYourShareMetric,
   getGroupCategoryBreakdownMetric,
   getGroupMonthlyExpensesMetric,
   getGroupNetBalanceMetric,
@@ -33,7 +39,8 @@ function formatCurrency(amount: number, currency: string) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(Math.abs(amount));
 }
 
@@ -67,11 +74,12 @@ export function DashboardClient() {
         const nextGroups = response.groups ?? [];
         setGroups(nextGroups);
         setActiveGroupId((currentGroupId) => {
+          if (currentGroupId === "all") return "all";
           if (currentGroupId && nextGroups.some((group) => group.id === currentGroupId)) {
             return currentGroupId;
           }
 
-          return nextGroups[0]?.id ?? null;
+          return "all";
         });
       } catch (error) {
         if (!cancelled) {
@@ -117,14 +125,23 @@ export function DashboardClient() {
           topCategoryResponse,
           monthlyExpensesResponse,
           categoryBreakdownResponse,
-        ] = await Promise.all([
-          getGroupTotalSpentMetric(groupId),
-          getGroupYourShareMetric(groupId),
-          getGroupNetBalanceMetric(groupId),
-          getGroupTopCategoryMetric(groupId),
-          getGroupMonthlyExpensesMetric(groupId),
-          getGroupCategoryBreakdownMetric(groupId),
-        ]);
+        ] = groupId === "all"
+          ? await Promise.all([
+              getAllGroupsTotalSpentMetric(),
+              getAllGroupsYourShareMetric(),
+              getAllGroupsNetBalanceMetric(),
+              getAllGroupsTopCategoryMetric(),
+              getAllGroupsMonthlyExpensesMetric(),
+              getAllGroupsCategoryBreakdownMetric(),
+            ])
+          : await Promise.all([
+              getGroupTotalSpentMetric(groupId),
+              getGroupYourShareMetric(groupId),
+              getGroupNetBalanceMetric(groupId),
+              getGroupTopCategoryMetric(groupId),
+              getGroupMonthlyExpensesMetric(groupId),
+              getGroupCategoryBreakdownMetric(groupId),
+            ]);
 
         if (cancelled) {
           return;
@@ -154,8 +171,9 @@ export function DashboardClient() {
     };
   }, [activeGroupId]);
 
-  const activeGroup = activeGroupId ? groups.find((group) => group.id === activeGroupId) ?? null : null;
+  const activeGroup = activeGroupId && activeGroupId !== "all" ? groups.find((group) => group.id === activeGroupId) ?? null : null;
   const currency = activeGroup?.default_currency ?? totalSpentMetric?.currency ?? "INR";
+  const isAllGroups = activeGroupId === "all";
   const totalExpense = totalSpentMetric?.totalSpent ?? 0;
   const yourShare = yourShareMetric?.yourShare ?? 0;
   const netBalance = netBalanceMetric?.netBalance ?? 0;
@@ -199,6 +217,16 @@ export function DashboardClient() {
 
       {/* Group tabs */}
       <div className="flex gap-2 overflow-x-auto pb-1">
+        <button
+          onClick={() => setActiveGroupId("all")}
+          className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+            activeGroupId === "all"
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          All
+        </button>
         {groups.map((g) => (
           <button
             key={g.id}
@@ -221,7 +249,9 @@ export function DashboardClient() {
           <p className="text-2xl font-bold text-foreground">
             {metricsLoading ? "Loading..." : formatCurrency(totalExpense, currency)}
           </p>
-          <p className="text-xs text-muted-foreground">all time in this group</p>
+          <p className="text-xs text-muted-foreground">
+            {isAllGroups ? "all time across all groups" : "all time in this group"}
+          </p>
         </div>
 
         <div className="rounded-xl border border-border bg-card px-5 py-4 space-y-1">
@@ -274,9 +304,7 @@ export function DashboardClient() {
                   return (
                     <div key={point.monthKey} className="flex shrink-0 flex-col items-center gap-1 w-16 sm:w-20">
                       <p className="text-xs text-muted-foreground">
-                        {point.totalAmount >= 1000
-                          ? `${formatCurrency(point.totalAmount / 1000, currency)}k`
-                          : formatCurrency(point.totalAmount, currency)}
+                        {formatCurrency(point.totalAmount, currency)}
                       </p>
                       <div className="flex w-full items-end justify-center" style={{ height: BAR_MAX_PX }}>
                         <div

@@ -197,3 +197,27 @@ export async function getGroupCategoryBreakdownMetric(groupId: string): Promise<
     method: "GET",
   });
 }
+
+export async function getAllGroupsTotalSpentMetric(): Promise<GroupTotalSpentMetric> {
+  return groupsRequest<GroupTotalSpentMetric>("/groups/metrics/total-spent", { method: "GET" });
+}
+
+export async function getAllGroupsYourShareMetric(): Promise<GroupYourShareMetric> {
+  return groupsRequest<GroupYourShareMetric>("/groups/metrics/your-share", { method: "GET" });
+}
+
+export async function getAllGroupsNetBalanceMetric(): Promise<GroupNetBalanceMetric> {
+  return groupsRequest<GroupNetBalanceMetric>("/groups/metrics/net-balance", { method: "GET" });
+}
+
+export async function getAllGroupsTopCategoryMetric(): Promise<GroupTopCategoryMetric> {
+  return groupsRequest<GroupTopCategoryMetric>("/groups/metrics/top-category", { method: "GET" });
+}
+
+export async function getAllGroupsMonthlyExpensesMetric(): Promise<GroupMonthlyExpensesMetric> {
+  return groupsRequest<GroupMonthlyExpensesMetric>("/groups/metrics/monthly-expenses", { method: "GET" });
+}
+
+export async function getAllGroupsCategoryBreakdownMetric(): Promise<GroupCategoryBreakdownMetric> {
+  return groupsRequest<GroupCategoryBreakdownMetric>("/groups/metrics/category-breakdown", { method: "GET" });
+}
