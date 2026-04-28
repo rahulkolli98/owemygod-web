@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { Skeleton } from "@/components/ui/skeleton";
+
 import { getApiErrorMessage } from "@/lib/auth-api";
 import {
   getAllGroupsCategoryBreakdownMetric,
@@ -186,7 +188,63 @@ export function DashboardClient() {
   const BAR_MAX_PX = 96;
 
   if (groupsLoading) {
-    return <p className="text-sm text-muted-foreground">Loading dashboard...</p>;
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-36" />
+
+        {/* Tab skeletons */}
+        <div className="flex gap-2">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-8 w-20 rounded-full" />
+          ))}
+        </div>
+
+        {/* KPI card skeletons */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="rounded-xl border border-border bg-card px-5 py-4 space-y-2">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-8 w-32" />
+              <Skeleton className="h-3 w-28" />
+            </div>
+          ))}
+        </div>
+
+        {/* Chart + breakdown skeletons */}
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2 rounded-xl border border-border bg-card px-5 py-5 space-y-4">
+            <Skeleton className="h-5 w-36" />
+            <div className="flex items-end gap-4">
+              {[60, 80, 45, 96, 70, 55].map((h, i) => (
+                <div key={i} className="flex shrink-0 flex-col items-center gap-1 w-16 sm:w-20">
+                  <Skeleton className="h-3 w-10" />
+                  <div className="flex w-full items-end justify-center" style={{ height: 96 }}>
+                    <Skeleton className="w-9 sm:w-11 rounded-t-md rounded-b-none" style={{ height: h }} />
+                  </div>
+                  <Skeleton className="h-3 w-10" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card px-5 py-5 space-y-4">
+            <Skeleton className="h-5 w-24" />
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="space-y-1">
+                  <div className="flex justify-between">
+                    <Skeleton className="h-3 w-20" />
+                    <Skeleton className="h-3 w-8" />
+                  </div>
+                  <Skeleton className="h-1.5 w-full rounded-full" />
+                  <Skeleton className="h-3 w-16" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (groupsError) {
@@ -246,9 +304,11 @@ export function DashboardClient() {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <div className="rounded-xl border border-border bg-card px-5 py-4 space-y-1">
           <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Total Spent</p>
-          <p className="text-2xl font-bold text-foreground">
-            {metricsLoading ? "Loading..." : formatCurrency(totalExpense, currency)}
-          </p>
+          {metricsLoading ? (
+            <Skeleton className="h-8 w-32 mt-1" />
+          ) : (
+            <p className="text-2xl font-bold text-foreground">{formatCurrency(totalExpense, currency)}</p>
+          )}
           <p className="text-xs text-muted-foreground">
             {isAllGroups ? "all time across all groups" : "all time in this group"}
           </p>
@@ -256,17 +316,23 @@ export function DashboardClient() {
 
         <div className="rounded-xl border border-border bg-card px-5 py-4 space-y-1">
           <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Your Share</p>
-          <p className="text-2xl font-bold text-foreground">
-            {metricsLoading ? "Loading..." : formatCurrency(yourShare, currency)}
-          </p>
+          {metricsLoading ? (
+            <Skeleton className="h-8 w-28 mt-1" />
+          ) : (
+            <p className="text-2xl font-bold text-foreground">{formatCurrency(yourShare, currency)}</p>
+          )}
           <p className="text-xs text-muted-foreground">your portion across expenses</p>
         </div>
 
         <div className="rounded-xl border border-border bg-card px-5 py-4 space-y-1">
           <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Your Net Balance</p>
-          <p className={`text-2xl font-bold ${netBalance >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive"}`}>
-            {metricsLoading ? "Loading..." : `${netBalance >= 0 ? "+" : "-"}${formatCurrency(netBalance, currency)}`}
-          </p>
+          {metricsLoading ? (
+            <Skeleton className="h-8 w-28 mt-1" />
+          ) : (
+            <p className={`text-2xl font-bold ${netBalance >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive"}`}>
+              {`${netBalance >= 0 ? "+" : "-"}${formatCurrency(netBalance, currency)}`}
+            </p>
+          )}
           <p className="text-xs text-muted-foreground">
             {netBalanceMetric?.status === "owed_to_you"
               ? "you are owed"
@@ -278,7 +344,11 @@ export function DashboardClient() {
 
         <div className="rounded-xl border border-border bg-card px-5 py-4 space-y-1">
           <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Top Category</p>
-          <p className="text-2xl font-bold text-foreground truncate">{metricsLoading ? "Loading..." : topCategory ?? "—"}</p>
+          {metricsLoading ? (
+            <Skeleton className="h-8 w-24 mt-1" />
+          ) : (
+            <p className="text-2xl font-bold text-foreground truncate">{topCategory ?? "—"}</p>
+          )}
           <p className="text-xs text-muted-foreground">
             {topCategory ? `${formatCurrency(topCategoryAmount, currency)} spent` : "no data"}
           </p>
@@ -291,7 +361,17 @@ export function DashboardClient() {
         <div className="lg:col-span-2 rounded-xl border border-border bg-card px-5 py-5 space-y-4">
           <p className="font-semibold text-foreground">Monthly Expenses</p>
           {metricsLoading ? (
-            <p className="text-sm text-muted-foreground">Loading monthly expenses...</p>
+            <div className="flex items-end gap-4 pb-1">
+              {[60, 80, 45, 96, 70, 55].map((h, i) => (
+                <div key={i} className="flex shrink-0 flex-col items-center gap-1 w-16 sm:w-20">
+                  <Skeleton className="h-3 w-10" />
+                  <div className="flex w-full items-end justify-center" style={{ height: BAR_MAX_PX }}>
+                    <Skeleton className="w-9 sm:w-11 rounded-t-md rounded-b-none" style={{ height: h }} />
+                  </div>
+                  <Skeleton className="h-3 w-10" />
+                </div>
+              ))}
+            </div>
           ) : monthlyPoints.length === 0 ? (
             <p className="text-sm text-muted-foreground">No data yet.</p>
           ) : (
@@ -325,7 +405,18 @@ export function DashboardClient() {
         <div className="rounded-xl border border-border bg-card px-5 py-5 space-y-4">
           <p className="font-semibold text-foreground">By Category</p>
           {metricsLoading ? (
-            <p className="text-sm text-muted-foreground">Loading category breakdown...</p>
+            <div className="space-y-3">
+              {["w-20", "w-28", "w-16", "w-24"].map((w, i) => (
+                <div key={i} className="space-y-1">
+                  <div className="flex justify-between items-baseline">
+                    <Skeleton className={`h-3 ${w}`} />
+                    <Skeleton className="h-3 w-8" />
+                  </div>
+                  <Skeleton className="h-1.5 w-full rounded-full" />
+                  <Skeleton className="h-3 w-16" />
+                </div>
+              ))}
+            </div>
           ) : categoryItems.length === 0 ? (
             <p className="text-sm text-muted-foreground">No data yet.</p>
           ) : (
