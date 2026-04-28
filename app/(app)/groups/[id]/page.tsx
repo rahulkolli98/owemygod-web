@@ -213,7 +213,7 @@ export default function GroupPage() {
   return (
     <div className="space-y-6">
       {joinToastMessage && (
-        <div className="fixed right-4 top-4 z-50 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 shadow-md">
+        <div className="fixed right-4 top-4 z-50 rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success shadow-md">
           {joinToastMessage}
         </div>
       )}
