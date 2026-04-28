@@ -7,6 +7,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -166,7 +167,26 @@ export function GroupsClient() {
   }
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading groups...</p>;
+    return (
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="rounded-xl border border-border bg-card p-5 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <Skeleton className="h-5 w-36" />
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-7 w-7 rounded-md" />
+                <Skeleton className="h-7 w-7 rounded-md" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-3 w-28" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   }
 
   if (error) {

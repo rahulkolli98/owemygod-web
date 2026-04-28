@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useParams, notFound } from "next/navigation";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 import { GroupDetailClient } from "@/components/groups/GroupDetailClient";
 import { getApiErrorMessage, getCurrentUserId } from "@/lib/auth-api";
 import { getGroupById } from "@/lib/api/groups";
@@ -151,7 +152,42 @@ export default function GroupPage() {
         >
           Back to groups
         </Link>
-        <p className="text-sm text-muted-foreground">Loading group...</p>
+
+        {/* Header: title + members line + action buttons */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-72" />
+          </div>
+          <div className="flex flex-col md:flex-row gap-2">
+            <Skeleton className="h-9 w-28 rounded-md" />
+            <Skeleton className="h-9 w-28 rounded-md" />
+          </div>
+        </div>
+
+        {/* Balance summary area */}
+        <div className="flex justify-center">
+          <div className="space-y-2 text-center">
+            <Skeleton className="h-5 w-52 mx-auto" />
+            <Skeleton className="h-4 w-40 mx-auto" />
+          </div>
+        </div>
+
+        {/* Expense list */}
+        <div className="space-y-2">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="rounded-xl border border-border bg-card px-5 py-4 flex items-center justify-between gap-4">
+              <div className="space-y-1.5 flex-1">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-3 w-28" />
+              </div>
+              <div className="flex flex-col items-end gap-1">
+                <Skeleton className="h-5 w-20" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
