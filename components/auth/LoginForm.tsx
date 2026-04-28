@@ -29,10 +29,10 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
   const router = useRouter();
-  const nextPath =
-    typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search).get("next") || "/dashboard"
-      : "/dashboard";
+  const searchParams =
+    typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const nextPath = searchParams?.get("next") || "/dashboard";
+  const showDeactivatedMessage = searchParams?.get("deactivated") === "1";
   const signupHref = `/signup?next=${encodeURIComponent(nextPath)}`;
   const [submitError, setSubmitError] = useState<string | null>(null);
   const {
@@ -64,6 +64,12 @@ export function LoginForm() {
 
       <form onSubmit={handleSubmit(onSubmit)}>
         <CardContent className="space-y-4">
+          {showDeactivatedMessage && (
+            <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+              Account deactivated successfully. You can sign in again within 30 days to restore it.
+            </p>
+          )}
+
           {submitError && (
             <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {submitError}

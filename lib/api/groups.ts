@@ -24,6 +24,62 @@ export interface GroupInviteLinkResponse {
   };
 }
 
+export interface GroupTotalSpentMetric {
+  groupId: string;
+  totalSpent: number;
+  currency: string;
+}
+
+export interface GroupYourShareMetric {
+  groupId: string;
+  yourShare: number;
+  currency: string;
+}
+
+export type GroupNetBalanceStatus = "owed_to_you" | "you_owe" | "settled";
+
+export interface GroupNetBalanceMetric {
+  groupId: string;
+  netBalance: number;
+  creditAmount: number;
+  debitAmount: number;
+  currency: string;
+  status: GroupNetBalanceStatus;
+}
+
+export interface GroupTopCategoryMetric {
+  groupId: string;
+  category: string | null;
+  amount: number;
+  currency: string;
+}
+
+export interface GroupMonthlyExpensePoint {
+  monthKey: string;
+  year: number;
+  month: number;
+  totalAmount: number;
+}
+
+export interface GroupMonthlyExpensesMetric {
+  groupId: string;
+  currency: string;
+  months: GroupMonthlyExpensePoint[];
+}
+
+export interface GroupCategoryBreakdownItem {
+  category: string;
+  amount: number;
+  percentage: number;
+}
+
+export interface GroupCategoryBreakdownMetric {
+  groupId: string;
+  currency: string;
+  totalSpent: number;
+  categories: GroupCategoryBreakdownItem[];
+}
+
 import { API_BASE_URL } from "../config";
 
 async function groupsRequest<TData>(
@@ -104,4 +160,64 @@ export async function createGroupInviteLink(groupId: string): Promise<GroupInvit
   return groupsRequest<GroupInviteLinkResponse>(`/groups/${groupId}/invite-link`, {
     method: "POST",
   });
+}
+
+export async function getGroupTotalSpentMetric(groupId: string): Promise<GroupTotalSpentMetric> {
+  return groupsRequest<GroupTotalSpentMetric>(`/groups/${groupId}/metrics/total-spent`, {
+    method: "GET",
+  });
+}
+
+export async function getGroupYourShareMetric(groupId: string): Promise<GroupYourShareMetric> {
+  return groupsRequest<GroupYourShareMetric>(`/groups/${groupId}/metrics/your-share`, {
+    method: "GET",
+  });
+}
+
+export async function getGroupNetBalanceMetric(groupId: string): Promise<GroupNetBalanceMetric> {
+  return groupsRequest<GroupNetBalanceMetric>(`/groups/${groupId}/metrics/net-balance`, {
+    method: "GET",
+  });
+}
+
+export async function getGroupTopCategoryMetric(groupId: string): Promise<GroupTopCategoryMetric> {
+  return groupsRequest<GroupTopCategoryMetric>(`/groups/${groupId}/metrics/top-category`, {
+    method: "GET",
+  });
+}
+
+export async function getGroupMonthlyExpensesMetric(groupId: string): Promise<GroupMonthlyExpensesMetric> {
+  return groupsRequest<GroupMonthlyExpensesMetric>(`/groups/${groupId}/metrics/monthly-expenses`, {
+    method: "GET",
+  });
+}
+
+export async function getGroupCategoryBreakdownMetric(groupId: string): Promise<GroupCategoryBreakdownMetric> {
+  return groupsRequest<GroupCategoryBreakdownMetric>(`/groups/${groupId}/metrics/category-breakdown`, {
+    method: "GET",
+  });
+}
+
+export async function getAllGroupsTotalSpentMetric(): Promise<GroupTotalSpentMetric> {
+  return groupsRequest<GroupTotalSpentMetric>("/groups/metrics/total-spent", { method: "GET" });
+}
+
+export async function getAllGroupsYourShareMetric(): Promise<GroupYourShareMetric> {
+  return groupsRequest<GroupYourShareMetric>("/groups/metrics/your-share", { method: "GET" });
+}
+
+export async function getAllGroupsNetBalanceMetric(): Promise<GroupNetBalanceMetric> {
+  return groupsRequest<GroupNetBalanceMetric>("/groups/metrics/net-balance", { method: "GET" });
+}
+
+export async function getAllGroupsTopCategoryMetric(): Promise<GroupTopCategoryMetric> {
+  return groupsRequest<GroupTopCategoryMetric>("/groups/metrics/top-category", { method: "GET" });
+}
+
+export async function getAllGroupsMonthlyExpensesMetric(): Promise<GroupMonthlyExpensesMetric> {
+  return groupsRequest<GroupMonthlyExpensesMetric>("/groups/metrics/monthly-expenses", { method: "GET" });
+}
+
+export async function getAllGroupsCategoryBreakdownMetric(): Promise<GroupCategoryBreakdownMetric> {
+  return groupsRequest<GroupCategoryBreakdownMetric>("/groups/metrics/category-breakdown", { method: "GET" });
 }
