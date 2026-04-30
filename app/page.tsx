@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Navbar } from "@/components/Navbar";
+import SaasTemplate from "@/components/ui/saa-s-template";
 
 const features = [
   {
@@ -28,35 +28,11 @@ const features = [
 
 export default function Home() {
   return (
-    <div className="flex flex-col min-h-screen bg-background">
-      <Navbar />
+    <div className="flex min-h-screen flex-col bg-background text-foreground dark:bg-background dark:text-foreground">
+      <main className="flex flex-1 flex-col">
+        <SaasTemplate />
 
-      <main className="flex flex-col flex-1">
-        {/* Hero */}
-        <section className="mx-auto flex w-full max-w-4xl flex-col items-center gap-6 px-6 py-28 text-center">
-          <span className="rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-            Free &amp; unlimited — forever
-          </span>
-          <h1 className="text-5xl font-extrabold tracking-tight text-foreground sm:text-6xl">
-            Split bills.<br />
-            <span className="text-primary">Skip the awkward ask.</span>
-          </h1>
-          <p className="max-w-xl text-lg text-muted-foreground">
-            OweMyGod makes group expenses painless. Add an expense, see who owes
-            whom, and settle up — all in one place.
-          </p>
-          <div className="flex flex-wrap justify-center gap-3">
-            <Link href="/signup" className={cn(buttonVariants({ size: "lg" }))}>
-              Start for free
-            </Link>
-            <Link href="/login" className={cn(buttonVariants({ variant: "outline", size: "lg" }))}>
-              Sign in
-            </Link>
-          </div>
-        </section>
-
-        {/* Features grid */}
-        <section className="mx-auto w-full max-w-5xl px-6 pb-28">
+        <section id="features" className="mx-auto w-full max-w-5xl px-6 pb-28 pt-12">
           <div className="grid gap-6 sm:grid-cols-2">
             {features.map((f) => (
               <div
@@ -68,13 +44,22 @@ export default function Home() {
               </div>
             ))}
           </div>
+
+          <div className="mt-10 flex flex-wrap justify-center gap-3">
+            <Link href="/signup" className={cn(buttonVariants({ size: "lg" }))}>
+              Create your first group
+            </Link>
+            <Link href="/login" className={cn(buttonVariants({ variant: "outline", size: "lg" }))}>
+              Login to continue
+            </Link>
+          </div>
         </section>
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border py-6">
-        <p className="text-center text-xs text-muted-foreground">
-          &copy; {new Date().getFullYear()} OweMyGod. Free forever.
+      <footer className="border-t border-border bg-background py-6 text-foreground dark:border-white/10 dark:bg-neutral-950/90">
+        <p className="text-center text-xs text-muted-foreground dark:text-white/60">
+          &copy; {new Date().getFullYear()} OweMyGod! Thou shalt not forget who paid for dinner.
         </p>
       </footer>
     </div>
