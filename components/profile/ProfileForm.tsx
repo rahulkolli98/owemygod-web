@@ -209,7 +209,7 @@ export function ProfileForm() {
       // Ignore network/token revocation errors and always clear local session.
     } finally {
       setIsSigningOut(false);
-      router.push("/login");
+      router.push("/");
     }
   }
 

@@ -131,3 +131,28 @@
     @apply font-sans;
   }
 }
+
+@keyframes hero-monster-idle {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(-0.8deg);
+  }
+  50% {
+    transform: translate3d(0, -6px, 0) rotate(0.8deg);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(-0.8deg);
+  }
+}
+
+.hero-monster-idle {
+  transform-origin: 52% 100%;
+  animation: hero-monster-idle 6.4s ease-in-out infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-monster-idle {
+    animation: none;
+    transform: none;
+  }
+}
