@@ -31,6 +31,15 @@ export interface SignUpInput {
   password: string;
 }
 
+export interface ForgotPasswordInput {
+  email: string;
+}
+
+export interface ResetPasswordInput {
+  accessToken: string;
+  newPassword: string;
+}
+
 export interface CreateGroupInput {
   name: string;
   description?: string;
@@ -238,6 +247,14 @@ export async function signOut(): Promise<void> {
   } finally {
     clearAuthSession();
   }
+}
+
+export async function forgotPassword(input: ForgotPasswordInput): Promise<void> {
+  await postAuth("/auth/forgot-password", input);
+}
+
+export async function resetPassword(input: ResetPasswordInput): Promise<void> {
+  await postAuth("/auth/reset-password", input);
 }
 
 export function getApiErrorMessage(error: unknown): string {
