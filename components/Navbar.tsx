@@ -20,6 +20,7 @@ export function Navbar({ hideAuthActions = false }: NavbarProps) {
             width={120}
             height={28}
             className="h-7 w-auto dark:hidden"
+            style={{ width: 'auto' }}
             priority
           />
           <Image
@@ -28,6 +29,7 @@ export function Navbar({ hideAuthActions = false }: NavbarProps) {
             width={120}
             height={28}
             className="hidden h-7 w-auto dark:block"
+            style={{ width: 'auto' }}
             priority
           />
         </Link>

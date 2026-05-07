@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,10 +29,18 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
   const router = useRouter();
-  const searchParams =
-    typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-  const nextPath = searchParams?.get("next") || "/dashboard";
-  const showDeactivatedMessage = searchParams?.get("deactivated") === "1";
+  const searchParams = useSearchParams();
+  const nextPath = searchParams.get("next") || "/dashboard";
+  const showDeactivatedMessage = searchParams.get("deactivated") === "1";
+  const logoutReason = searchParams.get("reason");
+  const logoutMessage =
+    logoutReason === "session_expired"
+      ? "Your session expired. Please sign in again."
+      : logoutReason === "session_revoked"
+        ? "Your password was changed. All your sessions have been ended for security. Please sign in again."
+        : logoutReason === "signed_out"
+          ? "You have signed out successfully."
+          : null;
   const signupHref = `/signup?next=${encodeURIComponent(nextPath)}`;
   const [submitError, setSubmitError] = useState<string | null>(null);
   const {
@@ -67,6 +75,12 @@ export function LoginForm() {
           {showDeactivatedMessage && (
             <p className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
               Account deactivated successfully. You can sign in again within 30 days to restore it.
+            </p>
+          )}
+
+          {logoutMessage && (
+            <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-foreground">
+              {logoutMessage}
             </p>
           )}
 
