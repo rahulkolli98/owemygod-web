@@ -11,7 +11,7 @@ export interface ExpenseResponse {
   description: string;
   category: string | null;
   expense_date: string;
-  split_type: "equal" | "custom";
+  split_type: "equal" | "custom" | "percentage" | "shares";
   receipt_url: string | null;
   notes: string | null;
   deleted_at: string | null;
@@ -49,7 +49,7 @@ export interface CreateExpenseInput {
   amount: number;
   paidBy: string;
   expenseDate: string;
-  splitType: "equal" | "custom";
+  splitType: "equal" | "custom" | "percentage" | "shares";
   participants: string[];
   splits?: Record<string, number>;
   category?: string;
@@ -62,7 +62,7 @@ export interface UpdateExpenseInput {
   amount?: number;
   paidBy?: string;
   expenseDate?: string;
-  splitType?: "equal" | "custom";
+  splitType?: "equal" | "custom" | "percentage" | "shares";
   participants?: string[];
   splits?: Record<string, number>;
   category?: string;
