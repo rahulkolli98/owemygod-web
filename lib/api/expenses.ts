@@ -1,5 +1,4 @@
-import { getAccessToken } from "../auth-api";
-import { API_BASE_URL } from "../config";
+import { requestData } from "../auth-api";
 
 export interface ExpenseResponse {
   id: string;
@@ -11,7 +10,7 @@ export interface ExpenseResponse {
   description: string;
   category: string | null;
   expense_date: string;
-  split_type: "equal" | "custom";
+  split_type: "equal" | "custom" | "percentage" | "shares";
   receipt_url: string | null;
   notes: string | null;
   deleted_at: string | null;
@@ -49,7 +48,7 @@ export interface CreateExpenseInput {
   amount: number;
   paidBy: string;
   expenseDate: string;
-  splitType: "equal" | "custom";
+  splitType: "equal" | "custom" | "percentage" | "shares";
   participants: string[];
   splits?: Record<string, number>;
   category?: string;
@@ -62,7 +61,7 @@ export interface UpdateExpenseInput {
   amount?: number;
   paidBy?: string;
   expenseDate?: string;
-  splitType?: "equal" | "custom";
+  splitType?: "equal" | "custom" | "percentage" | "shares";
   participants?: string[];
   splits?: Record<string, number>;
   category?: string;
@@ -78,31 +77,12 @@ async function expensesRequest<TData>(
     body?: unknown;
   }
 ): Promise<TData> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  const accessToken = getAccessToken();
-  if (accessToken) {
-    headers.Authorization = `Bearer ${accessToken}`;
-  }
-
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: options?.method ?? "GET",
-    headers,
-    body: options?.body !== undefined ? JSON.stringify(options.body) : undefined,
+  return requestData<TData>(path, {
+    method: options?.method,
+    body: options?.body,
+    withAuth: true,
+    expectDataEnvelope: false,
   });
-
-  const payload = (await response.json().catch(() => ({}))) as TData & {
-    error?: { code: string; message: string };
-  };
-
-  if (!response.ok) {
-    const err = payload as any;
-    throw new Error(err?.error?.message ?? "Request failed");
-  }
-
-  return payload;
 }
 
 export async function createExpense(

@@ -26,11 +26,14 @@ export function ThemeToggle() {
     const newIsDark = !isDark;
 
     try {
+      // Remove both classes, then add the appropriate one
+      root.classList.remove("light", "dark");
+      
       if (newIsDark) {
         root.classList.add("dark");
         localStorage.setItem(storageKey, "dark");
       } else {
-        root.classList.remove("dark");
+        root.classList.add("light");
         localStorage.setItem(storageKey, "light");
       }
       setIsDark(newIsDark);
