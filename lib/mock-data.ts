@@ -37,6 +37,7 @@ export interface Group {
   id: string;
   name: string;
   currency?: string;
+  simplify_debts?: boolean;
   members: string[];
   memberDirectory?: GroupMemberDirectoryItem[];
   expenses: Expense[];

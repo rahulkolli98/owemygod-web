@@ -51,6 +51,7 @@ export interface GroupResponse {
   name: string;
   description: string | null;
   default_currency: string;
+  simplify_debts: boolean;
   created_by: string;
   is_active: boolean;
   archived_at: string | null;
@@ -100,6 +101,7 @@ export class ApiRequestError extends Error {
 import { API_BASE_URL } from "./config";
 const AUTH_SYNC_EVENT_KEY = "owemygod_auth_sync_event";
 const TOKEN_REFRESH_BUFFER_SECONDS = 60;
+const USER_ID_STORAGE_KEY = "owemygod_user_id";
 
 type RefreshResult = {
   ok: boolean;
@@ -138,13 +140,18 @@ export function saveAuthSession(session?: AuthSession): void {
   // The tokens are automatically sent by the browser in subsequent requests
 }
 
+export function saveCurrentUserId(userId: string | undefined): void {
+  if (!isBrowser() || !userId) return;
+  window.localStorage.setItem(USER_ID_STORAGE_KEY, userId);
+}
+
 export function clearAuthSession(): void {
   if (!isBrowser()) {
     return;
   }
 
   // Cookies are cleared by the backend on logout
-  // This function is now a no-op for compatibility
+  window.localStorage.removeItem(USER_ID_STORAGE_KEY);
 }
 
 function decodeJwtPayload(token: string): { exp?: number } | null {
@@ -513,16 +520,11 @@ export function getApiErrorMessage(error: unknown): string {
 }
 
 /**
- * Decode the Supabase JWT stored in localStorage to extract the current user's ID (sub claim).
+ * Returns the current user's ID from localStorage.
+ * Populated by saveCurrentUserId() after sign-in/sign-up.
  * Safe to call in client components only.
  */
 export function getCurrentUserId(): string | null {
-  const token = getAccessToken();
-  if (!token) return null;
-  try {
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    return (payload.sub as string) ?? null;
-  } catch {
-    return null;
-  }
+  if (!isBrowser()) return null;
+  return window.localStorage.getItem(USER_ID_STORAGE_KEY);
 }

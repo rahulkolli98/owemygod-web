@@ -7,9 +7,10 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GroupDetailClient } from "@/components/groups/GroupDetailClient";
-import { getApiErrorMessage, getCurrentUserId } from "@/lib/auth-api";
+import { getApiErrorMessage, getCurrentUserId, saveCurrentUserId } from "@/lib/auth-api";
 import { getGroupById } from "@/lib/api/groups";
 import { listExpenses, ExpenseListItem } from "@/lib/api/expenses";
+import { getProfile } from "@/lib/api/profile";
 import { EXPENSE_CATEGORIES, type Group, type ExpenseCategory } from "@/lib/mock-data";
 
 interface GroupMemberRecord {
@@ -27,6 +28,57 @@ function memberLabel(member: GroupMemberRecord, currentUserId: string | null): s
 export default function GroupPage() {
   const params = useParams();
   const groupId = params.id as string;
+
+  function buildTransformedGroup(
+    groupResp: Awaited<ReturnType<typeof getGroupById>>,
+    expensesResp: Awaited<ReturnType<typeof listExpenses>>,
+    currentUserId: string | null
+  ): Group {
+    const group = groupResp.group;
+    const rawMembers: GroupMemberRecord[] = groupResp.members || [];
+    const rawExpenses: ExpenseListItem[] = expensesResp.expenses || [];
+    const memberNameByUserId = new Map(
+      rawMembers.map((member) => [member.user_id, memberLabel(member, currentUserId)])
+    );
+    const memberDirectory = rawMembers.map((member) => ({
+      id: member.user_id,
+      name: memberLabel(member, currentUserId),
+    }));
+
+    return {
+      id: group.id,
+      name: group.name,
+      currency: group.default_currency,
+      simplify_debts: group.simplify_debts,
+      members: rawMembers.map((m) => memberLabel(m, currentUserId)),
+      memberDirectory,
+      expenses: rawExpenses.map((e) => {
+        const participants = (e.expense_splits || []).map((s) =>
+          memberNameByUserId.get(s.user_id) ?? s.user_id.slice(0, 8) + "..."
+        );
+        const validCategories = EXPENSE_CATEGORIES as readonly string[];
+        const category: ExpenseCategory = validCategories.includes(e.category ?? "")
+          ? (e.category as ExpenseCategory)
+          : "Other";
+
+        return {
+          id: e.id,
+          description: e.description,
+          amount: e.amount_total,
+          paidBy: memberNameByUserId.get(e.paid_by) ?? e.paid_by.slice(0, 8) + "...",
+          date: e.expense_date,
+          participants,
+          category,
+          splitDetails: (e.expense_splits || []).map((s) => ({
+            userId: s.user_id,
+            userName: memberNameByUserId.get(s.user_id) ?? s.user_id.slice(0, 8) + "...",
+            amountOwed: s.amount_owed,
+            settledAmount: s.settled_amount,
+          })),
+        };
+      }),
+    };
+  }
 
   const [groupData, setGroupData] = useState<Group | null>(null);
   const [loading, setLoading] = useState(true);
@@ -66,65 +118,26 @@ export default function GroupPage() {
 
   useEffect(() => {
     let cancelled = false;
-    const currentUserId = getCurrentUserId();
 
     async function loadAll() {
       setLoading(true);
       setError(null);
 
       try {
+        let currentUserId = getCurrentUserId();
+
         const [groupResp, expensesResp] = await Promise.all([
           getGroupById(groupId),
           listExpenses(groupId),
+          // If user ID not cached (existing session), fetch profile to populate it
+          !currentUserId
+            ? getProfile().then((p) => { saveCurrentUserId(p.profile.userId); currentUserId = p.profile.userId; }).catch(() => {})
+            : Promise.resolve(),
         ]);
 
         if (cancelled) return;
 
-        const group = groupResp.group;
-        const rawMembers: GroupMemberRecord[] = groupResp.members || [];
-        const rawExpenses: ExpenseListItem[] = expensesResp.expenses || [];
-        const memberNameByUserId = new Map(
-          rawMembers.map((member) => [member.user_id, memberLabel(member, currentUserId)])
-        );
-        const memberDirectory = rawMembers.map((member) => ({
-          id: member.user_id,
-          name: memberLabel(member, currentUserId),
-        }));
-
-        const transformed: Group = {
-          id: group.id,
-          name: group.name,
-          currency: group.default_currency,
-          members: rawMembers.map((m) => memberLabel(m, currentUserId)),
-          memberDirectory,
-          expenses: rawExpenses.map((e) => {
-            const participants = (e.expense_splits || []).map((s) =>
-              memberNameByUserId.get(s.user_id) ?? s.user_id.slice(0, 8) + "..."
-            );
-            const validCategories = EXPENSE_CATEGORIES as readonly string[];
-            const category: ExpenseCategory = validCategories.includes(e.category ?? "")
-              ? (e.category as ExpenseCategory)
-              : "Other";
-
-            return {
-              id: e.id,
-              description: e.description,
-              amount: e.amount_total,
-              paidBy: memberNameByUserId.get(e.paid_by) ?? e.paid_by.slice(0, 8) + "...",
-              date: e.expense_date,
-              participants,
-              category,
-              splitDetails: (e.expense_splits || []).map((s) => ({
-                userId: s.user_id,
-                userName: memberNameByUserId.get(s.user_id) ?? s.user_id.slice(0, 8) + "...",
-                amountOwed: s.amount_owed,
-                settledAmount: s.settled_amount,
-              })),
-            };
-          }),
-        };
-
-        setGroupData(transformed);
+        setGroupData(buildTransformedGroup(groupResp, expensesResp, currentUserId));
       } catch (err) {
         if (!cancelled) {
           setError(getApiErrorMessage(err));
@@ -142,6 +155,21 @@ export default function GroupPage() {
       cancelled = true;
     };
   }, [groupId, reloadToken]);
+
+  async function silentRefreshGroup() {
+    // Fetches fresh group data without triggering the loading skeleton,
+    // so mounted components (e.g. settings modal) stay alive.
+    const currentUserId = getCurrentUserId();
+    try {
+      const [groupResp, expensesResp] = await Promise.all([
+        getGroupById(groupId),
+        listExpenses(groupId),
+      ]);
+      setGroupData(buildTransformedGroup(groupResp, expensesResp, currentUserId));
+    } catch {
+      // Ignore errors on background refresh — user can manually reload.
+    }
+  }
 
   if (loading) {
     return (
@@ -228,6 +256,7 @@ export default function GroupPage() {
       <GroupDetailClient
         group={groupData}
         onExpenseDeleted={() => setReloadToken((prev) => prev + 1)}
+        onGroupUpdated={() => { void silentRefreshGroup(); }}
       />
     </div>
   );

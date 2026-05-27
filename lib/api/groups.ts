@@ -12,6 +12,7 @@ export interface UpdateGroupInput {
   name?: string;
   description?: string;
   defaultCurrency?: string;
+  simplifyDebts?: boolean;
 }
 
 export interface GroupInviteLinkResponse {
@@ -80,6 +81,19 @@ export interface GroupCategoryBreakdownMetric {
   categories: GroupCategoryBreakdownItem[];
 }
 
+export interface GroupDebtTransfer {
+  fromUserId: string;
+  toUserId: string;
+  amount: number;
+}
+
+export interface GroupDebtsResponse {
+  groupId: string;
+  currency: string;
+  simplified: boolean;
+  transfers: GroupDebtTransfer[];
+}
+
 async function groupsRequest<TData>(
   path: string,
   options?: {
@@ -132,6 +146,12 @@ export async function deleteGroup(
       method: "DELETE",
     }
   );
+}
+
+export async function getGroupDebts(groupId: string): Promise<GroupDebtsResponse> {
+  return groupsRequest<GroupDebtsResponse>(`/groups/${groupId}/debts`, {
+    method: "GET",
+  });
 }
 
 export async function createGroupInviteLink(groupId: string): Promise<GroupInviteLinkResponse> {

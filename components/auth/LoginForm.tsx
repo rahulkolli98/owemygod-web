@@ -18,7 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getApiErrorMessage, saveAuthSession, signIn } from "@/lib/auth-api";
+import { getApiErrorMessage, saveAuthSession, saveCurrentUserId, signIn } from "@/lib/auth-api";
 
 const loginSchema = z.object({
   email: z.string().email("Enter a valid email address"),
@@ -63,6 +63,7 @@ export function LoginForm({
     try {
       const response = await signIn(data);
       saveAuthSession(response.session);
+      saveCurrentUserId(response.user?.id);
       router.push(nextPath);
     } catch (error) {
       setSubmitError(getApiErrorMessage(error));
