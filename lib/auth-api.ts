@@ -98,8 +98,6 @@ export class ApiRequestError extends Error {
 }
 
 import { API_BASE_URL } from "./config";
-const ACCESS_TOKEN_KEY = "owemygod_access_token";
-const REFRESH_TOKEN_KEY = "owemygod_refresh_token";
 const AUTH_SYNC_EVENT_KEY = "owemygod_auth_sync_event";
 const TOKEN_REFRESH_BUFFER_SECONDS = 60;
 
@@ -115,19 +113,15 @@ function isBrowser(): boolean {
 }
 
 export function getAccessToken(): string | null {
-  if (!isBrowser()) {
-    return null;
-  }
-
-  return window.localStorage.getItem(ACCESS_TOKEN_KEY);
+  // With HttpOnly cookies, we cannot read the token from JavaScript
+  // The browser automatically sends it with requests
+  return null;
 }
 
 export function getRefreshToken(): string | null {
-  if (!isBrowser()) {
-    return null;
-  }
-
-  return window.localStorage.getItem(REFRESH_TOKEN_KEY);
+  // With HttpOnly cookies, we cannot read the token from JavaScript
+  // The browser automatically sends it with requests via credentials
+  return null;
 }
 
 export function saveAuthSession(session?: AuthSession): void {
@@ -135,15 +129,13 @@ export function saveAuthSession(session?: AuthSession): void {
     return;
   }
 
-  if (!session?.accessToken) {
+  if (!session?.accessToken || !session?.refreshToken) {
     return;
   }
 
-  window.localStorage.setItem(ACCESS_TOKEN_KEY, session.accessToken);
-
-  if (session.refreshToken) {
-    window.localStorage.setItem(REFRESH_TOKEN_KEY, session.refreshToken);
-  }
+  // Tokens are stored as HttpOnly cookies by the backend
+  // This function is now a no-op for compatibility
+  // The tokens are automatically sent by the browser in subsequent requests
 }
 
 export function clearAuthSession(): void {
@@ -151,8 +143,8 @@ export function clearAuthSession(): void {
     return;
   }
 
-  window.localStorage.removeItem(ACCESS_TOKEN_KEY);
-  window.localStorage.removeItem(REFRESH_TOKEN_KEY);
+  // Cookies are cleared by the backend on logout
+  // This function is now a no-op for compatibility
 }
 
 function decodeJwtPayload(token: string): { exp?: number } | null {
@@ -280,20 +272,15 @@ async function refreshAccessSession(): Promise<RefreshResult> {
   }
 
   refreshInFlightPromise = (async () => {
-    const refreshToken = getRefreshToken();
-    if (!refreshToken) {
-      return {
-        ok: false,
-        reason: "session_expired",
-      };
-    }
-
+    // With HttpOnly cookies, the browser automatically sends the refreshToken cookie
+    // We just need to call the endpoint
     const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ refreshToken }),
+      credentials: "include", // Send cookies with this request
+      body: JSON.stringify({}), // Empty body, token is in cookie
     });
 
     const payload = (await response.json().catch(() => ({}))) as {
@@ -301,14 +288,14 @@ async function refreshAccessSession(): Promise<RefreshResult> {
       error?: ApiError;
     };
 
-    if (!response.ok || !payload.data?.session?.accessToken) {
+    if (!response.ok) {
       return {
         ok: false,
         reason: getLogoutReasonFromErrorCode(payload.error?.code),
       };
     }
 
-    saveAuthSession(payload.data.session);
+    // Backend sets the cookie, we don't need to save it locally anymore
     return {
       ok: true,
       reason: "session_expired",
@@ -367,8 +354,7 @@ async function resolveAccessToken(options: {
 
 async function doFetch<TData>(
   path: string,
-  options: RequestDataOptions,
-  token: string | null
+  options: RequestDataOptions
 ): Promise<{
   response: Response;
   payload: { data?: TData; error?: ApiError } | TData;
@@ -380,13 +366,13 @@ async function doFetch<TData>(
     headers["Content-Type"] = "application/json";
   }
 
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
+  // Tokens are in HttpOnly cookies, sent automatically by the browser
+  // No need to manually add Authorization header
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: options.method ?? "GET",
     headers,
+    credentials: "include", // Send cookies with this request
     body:
       options.rawBody !== undefined
         ? options.rawBody
@@ -412,22 +398,13 @@ async function postAuth<TBody extends object>(
     "Content-Type": "application/json",
   };
 
-  if (options?.withAuth) {
-    const accessToken = getAccessToken();
-
-    if (!accessToken) {
-      throw new ApiRequestError({
-        code: "UNAUTHORIZED",
-        message: "You are not signed in.",
-      });
-    }
-
-    headers.Authorization = `Bearer ${accessToken}`;
-  }
+  // With HttpOnly cookies, no need to manually add Authorization header
+  // The browser automatically sends it with credentials
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
     headers,
+    credentials: "include", // Send cookies with this request
     body: JSON.stringify(body),
   });
 
@@ -454,24 +431,18 @@ async function requestData<TData>(
 ): Promise<TData> {
   const requestOptions = options ?? {};
   const requiresAuth = !!requestOptions.withAuth;
-  const hasOptionalAuth = !!requestOptions.withOptionalAuth;
 
-  let token = await resolveAccessToken({
-    required: requiresAuth,
-    optional: hasOptionalAuth,
-    allowRefresh: requiresAuth || hasOptionalAuth,
-    forceLogoutOnFailure: requiresAuth,
-  });
+  let { response, payload } = await doFetch<TData>(path, requestOptions);
 
-  let { response, payload } = await doFetch<TData>(path, requestOptions, token);
-
-  if (response.status === 401 && (requiresAuth || hasOptionalAuth)) {
+  // If we get a 401 and auth is required, try refreshing
+  if (response.status === 401 && requiresAuth) {
     const refreshResult = await refreshAccessSession();
 
     if (refreshResult.ok) {
-      token = getAccessToken();
-      ({ response, payload } = await doFetch<TData>(path, requestOptions, token));
-    } else if (requiresAuth) {
+      // Retry the request after refreshing
+      ({ response, payload } = await doFetch<TData>(path, requestOptions));
+    } else {
+      // Refresh failed, force logout
       const responseLogoutReason = getLogoutReasonFromErrorCode(
         (payload as { error?: ApiError })?.error?.code
       );
@@ -502,13 +473,7 @@ export async function signUp(input: SignUpInput): Promise<AuthResponse> {
 
 export async function signOut(options?: LogoutOptions): Promise<void> {
   try {
-    const accessToken = getAccessToken();
-
-    if (!accessToken) {
-      return;
-    }
-
-    await postAuth("/auth/signout", {}, { withAuth: true });
+    await postAuth("/auth/signout", {});
   } finally {
     runGlobalLogout({
       reason: options?.reason ?? "manual_signout",

@@ -1,6 +1,9 @@
 import { AppNavbar } from "@/components/AppNavbar";
+import { requireServerSession } from "@/lib/auth-server";
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  await requireServerSession();
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <AppNavbar />
