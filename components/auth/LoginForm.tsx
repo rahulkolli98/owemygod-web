@@ -5,7 +5,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,7 +37,6 @@ export function LoginForm({
   showDeactivatedMessage = false,
   logoutReason = null,
 }: LoginFormProps) {
-  const router = useRouter();
   const logoutMessage =
     logoutReason === "session_expired"
       ? "Your session expired. Please sign in again."
@@ -64,7 +62,7 @@ export function LoginForm({
       const response = await signIn(data);
       saveAuthSession(response.session);
       saveCurrentUserId(response.user?.id);
-      router.push(nextPath);
+      window.location.assign(nextPath);
     } catch (error) {
       setSubmitError(getApiErrorMessage(error));
     }
