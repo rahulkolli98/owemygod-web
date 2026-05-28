@@ -4,7 +4,6 @@ import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
@@ -54,7 +53,6 @@ const profileSchema = z
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
 export function ProfileForm() {
-  const router = useRouter();
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -194,6 +192,11 @@ export function ProfileForm() {
       }
       setPhotoPreview(null);
 
+      if (hasPasswordChange) {
+        await signOut({ reason: "session_revoked" });
+        return;
+      }
+
       setSubmitSuccess("Profile updated successfully.");
     } catch (error) {
       setSubmitError(getApiErrorMessage(error));
@@ -204,12 +207,11 @@ export function ProfileForm() {
     setIsSigningOut(true);
 
     try {
-      await signOut();
+      await signOut({ reason: "manual_signout" });
     } catch {
       // Ignore network/token revocation errors and always clear local session.
     } finally {
       setIsSigningOut(false);
-      router.push("/");
     }
   }
 
@@ -232,8 +234,10 @@ export function ProfileForm() {
 
     try {
       await deactivateProfile({ currentPassword });
-      await signOut();
-      router.push("/login?deactivated=1");
+      await signOut({
+        reason: "manual_signout",
+        redirectTo: "/login?deactivated=1",
+      });
     } catch (error) {
       setDeactivateError(getApiErrorMessage(error));
     } finally {

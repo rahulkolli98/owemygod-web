@@ -51,6 +51,7 @@ export interface GroupResponse {
   name: string;
   description: string | null;
   default_currency: string;
+  simplify_debts: boolean;
   created_by: string;
   is_active: boolean;
   archived_at: string | null;
@@ -68,12 +69,26 @@ interface PostAuthOptions {
   withAuth?: boolean;
 }
 
-interface RequestDataOptions {
-  withAuth?: boolean;
-  method?: "GET" | "POST" | "PUT" | "DELETE";
+export type LogoutReason = "manual_signout" | "session_expired" | "session_revoked";
+
+interface LogoutOptions {
+  reason?: LogoutReason;
+  redirectTo?: string;
+  redirect?: boolean;
+  emitEvent?: boolean;
 }
 
-class ApiRequestError extends Error {
+interface RequestDataOptions {
+  withAuth?: boolean;
+  withOptionalAuth?: boolean;
+  method?: "GET" | "POST" | "PUT" | "DELETE";
+  body?: unknown;
+  rawBody?: BodyInit;
+  jsonBody?: boolean;
+  expectDataEnvelope?: boolean;
+}
+
+export class ApiRequestError extends Error {
   code: string;
 
   constructor(error: ApiError) {
@@ -84,19 +99,31 @@ class ApiRequestError extends Error {
 }
 
 import { API_BASE_URL } from "./config";
-const ACCESS_TOKEN_KEY = "owemygod_access_token";
-const REFRESH_TOKEN_KEY = "owemygod_refresh_token";
+const AUTH_SYNC_EVENT_KEY = "owemygod_auth_sync_event";
+const TOKEN_REFRESH_BUFFER_SECONDS = 60;
+const USER_ID_STORAGE_KEY = "owemygod_user_id";
+
+type RefreshResult = {
+  ok: boolean;
+  reason: Exclude<LogoutReason, "manual_signout">;
+};
+
+let refreshInFlightPromise: Promise<RefreshResult> | null = null;
 
 function isBrowser(): boolean {
   return typeof window !== "undefined";
 }
 
 export function getAccessToken(): string | null {
-  if (!isBrowser()) {
-    return null;
-  }
+  // With HttpOnly cookies, we cannot read the token from JavaScript
+  // The browser automatically sends it with requests
+  return null;
+}
 
-  return window.localStorage.getItem(ACCESS_TOKEN_KEY);
+export function getRefreshToken(): string | null {
+  // With HttpOnly cookies, we cannot read the token from JavaScript
+  // The browser automatically sends it with requests via credentials
+  return null;
 }
 
 export function saveAuthSession(session?: AuthSession): void {
@@ -104,15 +131,18 @@ export function saveAuthSession(session?: AuthSession): void {
     return;
   }
 
-  if (!session?.accessToken) {
+  if (!session?.accessToken || !session?.refreshToken) {
     return;
   }
 
-  window.localStorage.setItem(ACCESS_TOKEN_KEY, session.accessToken);
+  // Tokens are stored as HttpOnly cookies by the backend
+  // This function is now a no-op for compatibility
+  // The tokens are automatically sent by the browser in subsequent requests
+}
 
-  if (session.refreshToken) {
-    window.localStorage.setItem(REFRESH_TOKEN_KEY, session.refreshToken);
-  }
+export function saveCurrentUserId(userId: string | undefined): void {
+  if (!isBrowser() || !userId) return;
+  window.localStorage.setItem(USER_ID_STORAGE_KEY, userId);
 }
 
 export function clearAuthSession(): void {
@@ -120,8 +150,255 @@ export function clearAuthSession(): void {
     return;
   }
 
-  window.localStorage.removeItem(ACCESS_TOKEN_KEY);
-  window.localStorage.removeItem(REFRESH_TOKEN_KEY);
+  // Cookies are cleared by the backend on logout
+  window.localStorage.removeItem(USER_ID_STORAGE_KEY);
+}
+
+function decodeJwtPayload(token: string): { exp?: number } | null {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1])) as { exp?: number };
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+function isTokenExpiringSoon(token: string): boolean {
+  const payload = decodeJwtPayload(token);
+  if (!payload?.exp) {
+    return false;
+  }
+
+  const nowInSeconds = Math.floor(Date.now() / 1000);
+  return payload.exp <= nowInSeconds + TOKEN_REFRESH_BUFFER_SECONDS;
+}
+
+function toApiError(payload: unknown): ApiError {
+  const maybeError = (payload as { error?: ApiError })?.error;
+  if (maybeError?.code && maybeError?.message) {
+    return maybeError;
+  }
+
+  return {
+    code: "REQUEST_FAILED",
+    message: "Something went wrong. Please try again.",
+  };
+}
+
+function getLogoutReasonFromErrorCode(code?: string): Exclude<LogoutReason, "manual_signout"> {
+  if (code === "TOKEN_REVOKED" || code === "REFRESH_TOKEN_INVALID") {
+    return "session_revoked";
+  }
+
+  return "session_expired";
+}
+
+function forceLogout(reason: "session_expired" | "session_revoked" = "session_expired") {
+  runGlobalLogout({ reason });
+}
+
+function clearSessionScopedAppState() {
+  if (!isBrowser()) {
+    return;
+  }
+
+  const sessionKeysToClear: string[] = [];
+  for (let index = 0; index < window.sessionStorage.length; index += 1) {
+    const key = window.sessionStorage.key(index);
+    if (key?.startsWith("owemygod_")) {
+      sessionKeysToClear.push(key);
+    }
+  }
+
+  sessionKeysToClear.forEach((key) => {
+    window.sessionStorage.removeItem(key);
+  });
+}
+
+function getReasonQueryValue(reason: LogoutReason): string {
+  if (reason === "manual_signout") {
+    return "signed_out";
+  }
+
+  return reason;
+}
+
+function buildLoginUrlForLogout(reason: LogoutReason): string {
+  if (!isBrowser()) {
+    return "/login";
+  }
+
+  const nextPath = `${window.location.pathname}${window.location.search}`;
+  const reasonParam = getReasonQueryValue(reason);
+  return `/login?reason=${encodeURIComponent(reasonParam)}&next=${encodeURIComponent(nextPath)}`;
+}
+
+export function runGlobalLogout(options: LogoutOptions = {}): void {
+  const reason = options.reason ?? "session_expired";
+  const shouldRedirect = options.redirect ?? true;
+  const shouldEmitEvent = options.emitEvent ?? true;
+
+  clearAuthSession();
+  clearSessionScopedAppState();
+
+  if (!isBrowser()) {
+    return;
+  }
+
+  if (shouldEmitEvent) {
+    try {
+      const syncPayload = JSON.stringify({
+        type: "logout",
+        reason,
+        at: Date.now(),
+      });
+      window.localStorage.setItem(AUTH_SYNC_EVENT_KEY, syncPayload);
+
+      window.dispatchEvent(
+        new CustomEvent("owemygod:auth-logout", {
+          detail: { reason },
+        })
+      );
+    } catch {
+      // Ignore storage/sync failures and continue with logout redirect.
+    }
+  }
+
+  if (!shouldRedirect) {
+    return;
+  }
+
+  const targetUrl = options.redirectTo ?? buildLoginUrlForLogout(reason);
+  const currentPath = `${window.location.pathname}${window.location.search}`;
+  if (targetUrl === currentPath) {
+    return;
+  }
+
+  window.location.href = targetUrl;
+}
+
+async function refreshAccessSession(): Promise<RefreshResult> {
+  if (refreshInFlightPromise) {
+    return refreshInFlightPromise;
+  }
+
+  refreshInFlightPromise = (async () => {
+    // With HttpOnly cookies, the browser automatically sends the refreshToken cookie
+    // We just need to call the endpoint
+    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include", // Send cookies with this request
+      body: JSON.stringify({}), // Empty body, token is in cookie
+    });
+
+    const payload = (await response.json().catch(() => ({}))) as {
+      data?: AuthResponse;
+      error?: ApiError;
+    };
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        reason: getLogoutReasonFromErrorCode(payload.error?.code),
+      };
+    }
+
+    // Backend sets the cookie, we don't need to save it locally anymore
+    return {
+      ok: true,
+      reason: "session_expired",
+    };
+  })();
+
+  try {
+    return await refreshInFlightPromise;
+  } finally {
+    refreshInFlightPromise = null;
+  }
+}
+
+async function resolveAccessToken(options: {
+  required: boolean;
+  optional: boolean;
+  allowRefresh: boolean;
+  forceLogoutOnFailure: boolean;
+}): Promise<string | null> {
+  const accessToken = getAccessToken();
+
+  if (!accessToken) {
+    if (options.required) {
+      throw new ApiRequestError({
+        code: "UNAUTHORIZED",
+        message: "You are not signed in.",
+      });
+    }
+
+    return null;
+  }
+
+  const shouldTryRefresh = options.allowRefresh && isTokenExpiringSoon(accessToken);
+  if (!shouldTryRefresh) {
+    return accessToken;
+  }
+
+  const refreshResult = await refreshAccessSession();
+  if (!refreshResult.ok) {
+    if (options.forceLogoutOnFailure) {
+      forceLogout(refreshResult.reason);
+    }
+
+    if (options.required) {
+      throw new ApiRequestError({
+        code: "TOKEN_EXPIRED",
+        message: "Session expired. Please sign in again.",
+      });
+    }
+
+    return null;
+  }
+
+  return getAccessToken();
+}
+
+async function doFetch<TData>(
+  path: string,
+  options: RequestDataOptions
+): Promise<{
+  response: Response;
+  payload: { data?: TData; error?: ApiError } | TData;
+}> {
+  const headers: Record<string, string> = {};
+  const hasJsonBody = options.rawBody === undefined && options.body !== undefined;
+  const useJsonBody = options.jsonBody ?? hasJsonBody;
+
+  if (useJsonBody) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  // Tokens are in HttpOnly cookies, sent automatically by the browser
+  // No need to manually add Authorization header
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: options.method ?? "GET",
+    headers,
+    credentials: "include", // Send cookies with this request
+    body:
+      options.rawBody !== undefined
+        ? options.rawBody
+        : options.body !== undefined
+          ? JSON.stringify(options.body)
+          : undefined,
+  });
+
+  const payload = (await response.json().catch(() => ({}))) as {
+    data?: TData;
+    error?: ApiError;
+  } | TData;
+
+  return { response, payload };
 }
 
 async function postAuth<TBody extends object>(
@@ -133,22 +410,13 @@ async function postAuth<TBody extends object>(
     "Content-Type": "application/json",
   };
 
-  if (options?.withAuth) {
-    const accessToken = getAccessToken();
-
-    if (!accessToken) {
-      throw new ApiRequestError({
-        code: "UNAUTHORIZED",
-        message: "You are not signed in.",
-      });
-    }
-
-    headers.Authorization = `Bearer ${accessToken}`;
-  }
+  // With HttpOnly cookies, no need to manually add Authorization header
+  // The browser automatically sends it with credentials
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
     headers,
+    credentials: "include", // Send cookies with this request
     body: JSON.stringify(body),
   });
 
@@ -169,63 +437,44 @@ async function postAuth<TBody extends object>(
   return payload.data ?? {};
 }
 
-async function postData<TBody extends object, TData>(
-  path: string,
-  body: TBody,
-  options?: PostAuthOptions
-): Promise<TData> {
-  return requestData<TData>(path, {
-    method: "POST",
-    body,
-    withAuth: options?.withAuth,
-  });
-}
-
 async function requestData<TData>(
   path: string,
-  options?: RequestDataOptions & {
-    body?: unknown;
-  }
+  options?: RequestDataOptions
 ): Promise<TData> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
+  const requestOptions = options ?? {};
+  const requiresAuth = !!requestOptions.withAuth;
+  const optionalAuth = !!requestOptions.withOptionalAuth;
 
-  if (options?.withAuth) {
-    const accessToken = getAccessToken();
+  let { response, payload } = await doFetch<TData>(path, requestOptions);
 
-    if (!accessToken) {
-      throw new ApiRequestError({
-        code: "UNAUTHORIZED",
-        message: "You are not signed in.",
-      });
+  // If we get a 401 and auth is required or optional, try refreshing once.
+  if (response.status === 401 && (requiresAuth || optionalAuth)) {
+    const refreshResult = await refreshAccessSession();
+
+    if (refreshResult.ok) {
+      // Retry the request after refreshing
+      ({ response, payload } = await doFetch<TData>(path, requestOptions));
+    } else if (requiresAuth) {
+      // Refresh failed, force logout
+      const responseLogoutReason = getLogoutReasonFromErrorCode(
+        (payload as { error?: ApiError })?.error?.code
+      );
+      forceLogout(responseLogoutReason === "session_revoked" ? responseLogoutReason : refreshResult.reason);
     }
-
-    headers.Authorization = `Bearer ${accessToken}`;
   }
-
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: options?.method ?? "GET",
-    headers,
-    body: options?.body !== undefined ? JSON.stringify(options.body) : undefined,
-  });
-
-  const payload = (await response.json().catch(() => ({}))) as {
-    data?: TData;
-    error?: ApiError;
-  };
 
   if (!response.ok) {
-    throw new ApiRequestError(
-      payload.error ?? {
-        code: "REQUEST_FAILED",
-        message: "Something went wrong. Please try again.",
-      }
-    );
+    throw new ApiRequestError(toApiError(payload));
   }
 
-  return (payload.data ?? ({} as TData)) as TData;
+  if (requestOptions.expectDataEnvelope === false) {
+    return payload as TData;
+  }
+
+  return ((payload as { data?: TData })?.data ?? ({} as TData)) as TData;
 }
+
+export { requestData };
 
 export async function signIn(input: SignInInput): Promise<AuthResponse> {
   return postAuth("/auth/signin", input);
@@ -235,17 +484,16 @@ export async function signUp(input: SignUpInput): Promise<AuthResponse> {
   return postAuth("/auth/signup", input);
 }
 
-export async function signOut(): Promise<void> {
+export async function signOut(options?: LogoutOptions): Promise<void> {
   try {
-    const accessToken = getAccessToken();
-
-    if (!accessToken) {
-      return;
-    }
-
-    await postAuth("/auth/signout", {}, { withAuth: true });
+    await postAuth("/auth/signout", {});
   } finally {
-    clearAuthSession();
+    runGlobalLogout({
+      reason: options?.reason ?? "manual_signout",
+      redirectTo: options?.redirectTo,
+      redirect: options?.redirect,
+      emitEvent: options?.emitEvent,
+    });
   }
 }
 
@@ -278,16 +526,11 @@ export function getApiErrorMessage(error: unknown): string {
 }
 
 /**
- * Decode the Supabase JWT stored in localStorage to extract the current user's ID (sub claim).
+ * Returns the current user's ID from localStorage.
+ * Populated by saveCurrentUserId() after sign-in/sign-up.
  * Safe to call in client components only.
  */
 export function getCurrentUserId(): string | null {
-  const token = getAccessToken();
-  if (!token) return null;
-  try {
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    return (payload.sub as string) ?? null;
-  } catch {
-    return null;
-  }
+  if (!isBrowser()) return null;
+  return window.localStorage.getItem(USER_ID_STORAGE_KEY);
 }

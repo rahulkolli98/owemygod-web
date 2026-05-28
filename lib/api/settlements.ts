@@ -1,5 +1,4 @@
-import { getAccessToken } from "../auth-api";
-import { API_BASE_URL } from "../config";
+import { requestData } from "../auth-api";
 
 export interface CreateSettlementInput {
   groupId: string;
@@ -53,33 +52,11 @@ async function settlementsRequest<TData>(
     body?: unknown;
   }
 ): Promise<TData> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  const accessToken = getAccessToken();
-  if (!accessToken) {
-    throw new Error("You are not signed in.");
-  }
-
-  headers.Authorization = `Bearer ${accessToken}`;
-
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: options?.method ?? "GET",
-    headers,
-    body: options?.body !== undefined ? JSON.stringify(options.body) : undefined,
+  return requestData<TData>(path, {
+    method: options?.method,
+    body: options?.body,
+    withAuth: true,
   });
-
-  const payload = (await response.json().catch(() => ({}))) as {
-    data?: TData;
-    error?: { code: string; message: string };
-  };
-
-  if (!response.ok) {
-    throw new Error(payload.error?.message ?? "Request failed");
-  }
-
-  return (payload.data ?? ({} as TData)) as TData;
 }
 
 export async function createSettlement(

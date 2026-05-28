@@ -18,7 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getApiErrorMessage, saveAuthSession, signIn } from "@/lib/auth-api";
+import { getApiErrorMessage, saveAuthSession, saveCurrentUserId, signIn } from "@/lib/auth-api";
 
 const loginSchema = z.object({
   email: z.string().email("Enter a valid email address"),
@@ -27,13 +27,37 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-export function LoginForm() {
+interface LoginFormProps {
+  nextPath?: string;
+  showDeactivatedMessage?: boolean;
+  logoutReason?: string | null;
+}
+
+function sanitizeNextPath(nextPath: string | undefined): string {
+  if (!nextPath) return "/dashboard";
+  if (!nextPath.startsWith("/") || nextPath.startsWith("//")) {
+    return "/dashboard";
+  }
+
+  return nextPath;
+}
+
+export function LoginForm({
+  nextPath = "/dashboard",
+  showDeactivatedMessage = false,
+  logoutReason = null,
+}: LoginFormProps) {
   const router = useRouter();
-  const searchParams =
-    typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-  const nextPath = searchParams?.get("next") || "/dashboard";
-  const showDeactivatedMessage = searchParams?.get("deactivated") === "1";
-  const signupHref = `/signup?next=${encodeURIComponent(nextPath)}`;
+  const safeNextPath = sanitizeNextPath(nextPath);
+  const logoutMessage =
+    logoutReason === "session_expired"
+      ? "Your session expired. Please sign in again."
+      : logoutReason === "session_revoked"
+        ? "Your password was changed. All your sessions have been ended for security. Please sign in again."
+        : logoutReason === "signed_out"
+          ? "You have signed out successfully."
+          : null;
+  const signupHref = `/signup?next=${encodeURIComponent(safeNextPath)}`;
   const [submitError, setSubmitError] = useState<string | null>(null);
   const {
     register,
@@ -49,7 +73,8 @@ export function LoginForm() {
     try {
       const response = await signIn(data);
       saveAuthSession(response.session);
-      router.push(nextPath);
+      saveCurrentUserId(response.user?.id);
+      router.push(safeNextPath);
     } catch (error) {
       setSubmitError(getApiErrorMessage(error));
     }
@@ -67,6 +92,12 @@ export function LoginForm() {
           {showDeactivatedMessage && (
             <p className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
               Account deactivated successfully. You can sign in again within 30 days to restore it.
+            </p>
+          )}
+
+          {logoutMessage && (
+            <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-foreground">
+              {logoutMessage}
             </p>
           )}
 

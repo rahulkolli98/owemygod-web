@@ -18,7 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getApiErrorMessage, saveAuthSession, signUp } from "@/lib/auth-api";
+import { getApiErrorMessage, saveAuthSession, saveCurrentUserId, signUp } from "@/lib/auth-api";
 
 const signupSchema = z
   .object({
@@ -79,6 +79,7 @@ export function SignupForm() {
         displayName: data.useFullNameAsDisplayName ? data.name : (data.displayName ?? "").trim(),
       });
       saveAuthSession(response.session);
+      saveCurrentUserId(response.user?.id);
       router.push(nextPath);
     } catch (error) {
       setSubmitError(getApiErrorMessage(error));

@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { getAccessToken, getApiErrorMessage } from "@/lib/auth-api";
+import { getApiErrorMessage } from "@/lib/auth-api";
 import { InviteApiError, joinInvite, previewInvite, type InvitePreviewResponse } from "@/lib/api/invites";
 
 type InviteState = "ready" | "already-member" | "invalid" | "expired" | "error";
@@ -26,15 +26,13 @@ export default function InvitePage() {
     let cancelled = false;
 
     async function load() {
-      const accessToken = getAccessToken();
-      if (!accessToken) {
-        router.replace(`/login?next=${encodeURIComponent(`/invite/${token}`)}`);
-        return;
-      }
-
       try {
         const data = await previewInvite(token);
         if (!cancelled) {
+          if (!data.viewer.authenticated) {
+            router.replace(`/login?next=${encodeURIComponent(`/invite/${token}`)}`);
+            return;
+          }
           setPreview(data);
           setInviteState(data.viewer.alreadyMember ? "already-member" : "ready");
         }

@@ -1,5 +1,4 @@
-import { getAccessToken } from "../auth-api";
-import { API_BASE_URL } from "../config";
+import { ApiRequestError, requestData } from "../auth-api";
 
 export class InviteApiError extends Error {
   code: string;
@@ -42,38 +41,19 @@ async function invitesRequest<TData>(
     withAuth?: boolean;
   }
 ): Promise<TData> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
+  try {
+    return await requestData<TData>(path, {
+      method: options?.method,
+      withAuth: options?.withAuth,
+      withOptionalAuth: options?.withOptionalAuth,
+    });
+  } catch (error) {
+    if (error instanceof ApiRequestError) {
+      throw new InviteApiError(error.code, error.message);
+    }
 
-  const accessToken = getAccessToken();
-
-  if (options?.withAuth && !accessToken) {
-    throw new Error("You are not signed in.");
+    throw new InviteApiError("REQUEST_FAILED", "Request failed");
   }
-
-  if ((options?.withAuth || options?.withOptionalAuth) && accessToken) {
-    headers.Authorization = `Bearer ${accessToken}`;
-  }
-
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: options?.method ?? "GET",
-    headers,
-  });
-
-  const payload = (await response.json().catch(() => ({}))) as {
-    data?: TData;
-    error?: { code: string; message: string };
-  };
-
-  if (!response.ok) {
-    throw new InviteApiError(
-      payload.error?.code ?? "REQUEST_FAILED",
-      payload.error?.message ?? "Request failed"
-    );
-  }
-
-  return (payload.data ?? ({} as TData)) as TData;
 }
 
 export async function previewInvite(token: string): Promise<InvitePreviewResponse> {

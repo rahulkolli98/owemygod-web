@@ -2,11 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Settings } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShareInviteButton } from "@/components/groups/ShareInviteButton";
+import { GroupSettingsModal } from "@/components/groups/GroupSettingsModal";
 import { ExpenseActions } from "@/components/expenses/ExpenseActions";
+import { getGroupDebts, type GroupDebtTransfer } from "@/lib/api/groups";
 import {
   createSettlement,
   deleteSettlement,
@@ -19,6 +22,7 @@ import type { Group } from "@/lib/mock-data";
 interface GroupDetailClientProps {
   group: Group;
   onExpenseDeleted?: () => Promise<void> | void;
+  onGroupUpdated?: () => void;
 }
 
 interface Balance {
@@ -130,11 +134,12 @@ const MONTH_LABELS = [
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
-export function GroupDetailClient({ group, onExpenseDeleted }: GroupDetailClientProps) {
+export function GroupDetailClient({ group, onExpenseDeleted, onGroupUpdated }: GroupDetailClientProps) {
   const currencyCode = (group.currency ?? "USD").toUpperCase();
   const [settleUpOpen, setSettleUpOpen] = useState(false);
   const [balancesOpen, setBalancesOpen] = useState(false);
   const [totalsOpen, setTotalsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedSettleTarget, setSelectedSettleTarget] = useState<SettleTarget | null>(null);
   const [settleMessage, setSettleMessage] = useState("");
   const [settleAmount, setSettleAmount] = useState("");
@@ -144,16 +149,25 @@ export function GroupDetailClient({ group, onExpenseDeleted }: GroupDetailClient
   const [settlementHistoryLoading, setSettlementHistoryLoading] = useState(false);
   const [settlementHistoryError, setSettlementHistoryError] = useState<string | null>(null);
   const [undoingSettlementId, setUndoingSettlementId] = useState<string | null>(null);
+  const [simplifiedDebts, setSimplifiedDebts] = useState<GroupDebtTransfer[] | null>(null);
+  const [simplifiedDebtsLoading, setSimplifiedDebtsLoading] = useState(false);
 
   const currentUserId = getCurrentUserId();
 
   const memberIdByName = new Map((group.memberDirectory ?? []).map((member) => [member.name, member.id]));
   const memberNameById = new Map((group.memberDirectory ?? []).map((member) => [member.id, member.name]));
   const total = group.expenses.reduce((sum, e) => sum + e.amount, 0);
-  const balances = calculateBalances(group, {
-    settlements,
-    memberNameById,
-  });
+  const balances: Balance[] =
+    group.simplify_debts && simplifiedDebts !== null
+      ? simplifiedDebts.map((t) => ({
+          from: memberNameById.get(t.fromUserId) ?? t.fromUserId.slice(0, 8) + "...",
+          to: memberNameById.get(t.toUserId) ?? t.toUserId.slice(0, 8) + "...",
+          amount: t.amount,
+        }))
+      : calculateBalances(group, {
+          settlements,
+          memberNameById,
+        });
   const groupBalances = [...balances].sort((a, b) => b.amount - a.amount);
 
   const memberSummaries = group.members
@@ -251,6 +265,22 @@ export function GroupDetailClient({ group, onExpenseDeleted }: GroupDetailClient
     return memberNameById.get(userId) ?? `${userId.slice(0, 8)}...`;
   }
 
+  async function refreshSimplifiedDebts() {
+    if (!group.simplify_debts) {
+      setSimplifiedDebts(null);
+      return;
+    }
+    setSimplifiedDebtsLoading(true);
+    try {
+      const resp = await getGroupDebts(group.id);
+      setSimplifiedDebts(resp.transfers);
+    } catch {
+      setSimplifiedDebts(null);
+    } finally {
+      setSimplifiedDebtsLoading(false);
+    }
+  }
+
   async function refreshSettlements() {
     setSettlementHistoryLoading(true);
     setSettlementHistoryError(null);
@@ -268,6 +298,20 @@ export function GroupDetailClient({ group, onExpenseDeleted }: GroupDetailClient
   useEffect(() => {
     void refreshSettlements();
   }, [group.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!group.simplify_debts) {
+      setSimplifiedDebts(null);
+      return;
+    }
+    setSimplifiedDebtsLoading(true);
+    getGroupDebts(group.id)
+      .then((resp) => { if (!cancelled) setSimplifiedDebts(resp.transfers); })
+      .catch(() => { if (!cancelled) setSimplifiedDebts(null); })
+      .finally(() => { if (!cancelled) setSimplifiedDebtsLoading(false); });
+    return () => { cancelled = true; };
+  }, [group.id, group.simplify_debts]);
 
   function closeSettleUpModal() {
     setSettleUpOpen(false);
@@ -314,6 +358,7 @@ export function GroupDetailClient({ group, onExpenseDeleted }: GroupDetailClient
       });
 
       await refreshSettlements();
+      await refreshSimplifiedDebts();
       await onExpenseDeleted?.();
       closeSettleUpModal();
     } catch (error) {
@@ -329,6 +374,7 @@ export function GroupDetailClient({ group, onExpenseDeleted }: GroupDetailClient
     try {
       await deleteSettlement(settlementId);
       await refreshSettlements();
+      await refreshSimplifiedDebts();
       await onExpenseDeleted?.();
     } catch (error) {
       setSettlementHistoryError(getApiErrorMessage(error));
@@ -348,6 +394,13 @@ export function GroupDetailClient({ group, onExpenseDeleted }: GroupDetailClient
           </p>
         </div>
         <div className="flex flex-col md:flex-row gap-2">
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className={cn(buttonVariants({ variant: "ghost" }), "px-2.5")}
+            aria-label="Group settings"
+          >
+            <Settings className="h-5 w-5" />
+          </button>
           <ShareInviteButton groupId={group.id} />
           <Link
             href={`/groups/${group.id}/expenses/new`}
@@ -361,7 +414,10 @@ export function GroupDetailClient({ group, onExpenseDeleted }: GroupDetailClient
       {/* Balance summary - centered only */}
       <div className="flex justify-center">
         <div className="space-y-3 text-center max-w-xl">
-          {youOwe > 0 && (
+          {group.simplify_debts && simplifiedDebtsLoading && (
+            <p className="text-sm text-muted-foreground">Calculating simplified balances…</p>
+          )}
+          {!(group.simplify_debts && simplifiedDebtsLoading) && youOwe > 0 && (
             <div className="space-y-1">
               <p className="text-lg font-semibold text-destructive">
                 You owe {formatCurrency(youOwe, currencyCode)} overall
@@ -376,7 +432,7 @@ export function GroupDetailClient({ group, onExpenseDeleted }: GroupDetailClient
             </div>
           )}
 
-          {owedToYou > 0 && (
+          {!(group.simplify_debts && simplifiedDebtsLoading) && owedToYou > 0 && (
             <div className="space-y-1">
               <p className="text-lg font-semibold text-success">
                 You get back {formatCurrency(owedToYou, currencyCode)} overall
@@ -391,7 +447,7 @@ export function GroupDetailClient({ group, onExpenseDeleted }: GroupDetailClient
             </div>
           )}
 
-          {youOwe === 0 && owedToYou === 0 && (
+          {!(group.simplify_debts && simplifiedDebtsLoading) && youOwe === 0 && owedToYou === 0 && (
             <p className="text-sm text-muted-foreground">All settled up!</p>
           )}
         </div>
@@ -848,6 +904,13 @@ export function GroupDetailClient({ group, onExpenseDeleted }: GroupDetailClient
           </div>
         </div>
       )}
+
+      <GroupSettingsModal
+        group={group}
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onRefresh={() => onGroupUpdated?.()}
+      />
     </div>
   );
 }
