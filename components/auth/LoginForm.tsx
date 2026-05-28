@@ -33,12 +33,22 @@ interface LoginFormProps {
   logoutReason?: string | null;
 }
 
+function sanitizeNextPath(nextPath: string | undefined): string {
+  if (!nextPath) return "/dashboard";
+  if (!nextPath.startsWith("/") || nextPath.startsWith("//")) {
+    return "/dashboard";
+  }
+
+  return nextPath;
+}
+
 export function LoginForm({
   nextPath = "/dashboard",
   showDeactivatedMessage = false,
   logoutReason = null,
 }: LoginFormProps) {
   const router = useRouter();
+  const safeNextPath = sanitizeNextPath(nextPath);
   const logoutMessage =
     logoutReason === "session_expired"
       ? "Your session expired. Please sign in again."
@@ -47,7 +57,7 @@ export function LoginForm({
         : logoutReason === "signed_out"
           ? "You have signed out successfully."
           : null;
-  const signupHref = `/signup?next=${encodeURIComponent(nextPath)}`;
+  const signupHref = `/signup?next=${encodeURIComponent(safeNextPath)}`;
   const [submitError, setSubmitError] = useState<string | null>(null);
   const {
     register,
@@ -64,7 +74,7 @@ export function LoginForm({
       const response = await signIn(data);
       saveAuthSession(response.session);
       saveCurrentUserId(response.user?.id);
-      router.push(nextPath);
+      router.push(safeNextPath);
     } catch (error) {
       setSubmitError(getApiErrorMessage(error));
     }

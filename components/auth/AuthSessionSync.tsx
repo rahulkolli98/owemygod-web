@@ -11,6 +11,12 @@ type AuthSyncEvent = {
   at: number;
 };
 
+const VALID_LOGOUT_REASONS: LogoutReason[] = [
+  "manual_signout",
+  "session_expired",
+  "session_revoked",
+];
+
 function parseAuthSyncEvent(rawValue: string | null): AuthSyncEvent | null {
   if (!rawValue) {
     return null;
@@ -18,7 +24,11 @@ function parseAuthSyncEvent(rawValue: string | null): AuthSyncEvent | null {
 
   try {
     const parsed = JSON.parse(rawValue) as Partial<AuthSyncEvent>;
-    if (parsed.type !== "logout" || typeof parsed.reason !== "string") {
+    if (
+      parsed.type !== "logout" ||
+      typeof parsed.reason !== "string" ||
+      !VALID_LOGOUT_REASONS.includes(parsed.reason as LogoutReason)
+    ) {
       return null;
     }
 

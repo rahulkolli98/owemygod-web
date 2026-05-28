@@ -246,18 +246,22 @@ export function runGlobalLogout(options: LogoutOptions = {}): void {
   }
 
   if (shouldEmitEvent) {
-    const syncPayload = JSON.stringify({
-      type: "logout",
-      reason,
-      at: Date.now(),
-    });
-    window.localStorage.setItem(AUTH_SYNC_EVENT_KEY, syncPayload);
+    try {
+      const syncPayload = JSON.stringify({
+        type: "logout",
+        reason,
+        at: Date.now(),
+      });
+      window.localStorage.setItem(AUTH_SYNC_EVENT_KEY, syncPayload);
 
-    window.dispatchEvent(
-      new CustomEvent("owemygod:auth-logout", {
-        detail: { reason },
-      })
-    );
+      window.dispatchEvent(
+        new CustomEvent("owemygod:auth-logout", {
+          detail: { reason },
+        })
+      );
+    } catch {
+      // Ignore storage/sync failures and continue with logout redirect.
+    }
   }
 
   if (!shouldRedirect) {
@@ -367,7 +371,8 @@ async function doFetch<TData>(
   payload: { data?: TData; error?: ApiError } | TData;
 }> {
   const headers: Record<string, string> = {};
-  const useJsonBody = options.jsonBody ?? options.rawBody === undefined;
+  const hasJsonBody = options.rawBody === undefined && options.body !== undefined;
+  const useJsonBody = options.jsonBody ?? hasJsonBody;
 
   if (useJsonBody) {
     headers["Content-Type"] = "application/json";
@@ -438,17 +443,18 @@ async function requestData<TData>(
 ): Promise<TData> {
   const requestOptions = options ?? {};
   const requiresAuth = !!requestOptions.withAuth;
+  const optionalAuth = !!requestOptions.withOptionalAuth;
 
   let { response, payload } = await doFetch<TData>(path, requestOptions);
 
-  // If we get a 401 and auth is required, try refreshing
-  if (response.status === 401 && requiresAuth) {
+  // If we get a 401 and auth is required or optional, try refreshing once.
+  if (response.status === 401 && (requiresAuth || optionalAuth)) {
     const refreshResult = await refreshAccessSession();
 
     if (refreshResult.ok) {
       // Retry the request after refreshing
       ({ response, payload } = await doFetch<TData>(path, requestOptions));
-    } else {
+    } else if (requiresAuth) {
       // Refresh failed, force logout
       const responseLogoutReason = getLogoutReasonFromErrorCode(
         (payload as { error?: ApiError })?.error?.code
