@@ -5,7 +5,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,7 +45,6 @@ const signupSchema = z
 type SignupFormValues = z.infer<typeof signupSchema>;
 
 export function SignupForm() {
-  const router = useRouter();
   const nextPath =
     typeof window !== "undefined"
       ? new URLSearchParams(window.location.search).get("next") || "/dashboard"
@@ -80,7 +78,7 @@ export function SignupForm() {
       });
       saveAuthSession(response.session);
       saveCurrentUserId(response.user?.id);
-      router.push(nextPath);
+      window.location.assign(nextPath);
     } catch (error) {
       setSubmitError(getApiErrorMessage(error));
     }
