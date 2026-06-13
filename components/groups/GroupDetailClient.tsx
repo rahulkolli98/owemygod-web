@@ -18,6 +18,7 @@ import {
 } from "@/lib/api/settlements";
 import { getApiErrorMessage, getCurrentUserId } from "@/lib/auth-api";
 import type { Group } from "@/lib/mock-data";
+import { MemberAvatar } from "@/components/groups/MemberAvatar";
 
 interface GroupDetailClientProps {
   group: Group;
@@ -36,6 +37,16 @@ interface SettleTarget {
   userId: string | null;
   amount: number;
   type: "you-owe" | "owes-you";
+}
+
+interface GroupDirectoryMember {
+  id: string;
+  name: string;
+  avatarUrl?: string | null;
+}
+
+function getGroupDirectoryMember(group: Group, userName: string): GroupDirectoryMember | undefined {
+  return group.memberDirectory?.find((member) => member.name === userName);
 }
 
 function calculateBalances(
@@ -205,6 +216,12 @@ export function GroupDetailClient({ group, onExpenseDeleted, onGroupUpdated }: G
     })
     .filter((item) => item.net !== 0)
     .sort((a, b) => Math.abs(b.net) - Math.abs(a.net));
+
+  const visibleMembers = group.memberDirectory ?? group.members.map((name, index) => ({
+    id: `member-${index}`,
+    name,
+    avatarUrl: null,
+  }));
 
   // Your net balances per person
   const netByPerson: Record<string, number> = {};
@@ -392,6 +409,14 @@ export function GroupDetailClient({ group, onExpenseDeleted, onGroupUpdated }: G
           <p className="text-sm text-muted-foreground">
             {group.members.join(", ")} · Total {formatCurrency(total, currencyCode)}
           </p>
+          <div className="flex flex-wrap items-center gap-2 pt-2">
+            {visibleMembers.map((member) => (
+              <div key={member.id} className="flex items-center gap-2 rounded-full border border-border bg-background/70 px-2 py-1">
+                <MemberAvatar name={member.name} avatarUrl={member.avatarUrl} size="sm" />
+                <span className="text-xs font-medium text-foreground">{member.name}</span>
+              </div>
+            ))}
+          </div>
         </div>
         <div className="flex flex-col md:flex-row gap-2">
           <button
@@ -424,9 +449,16 @@ export function GroupDetailClient({ group, onExpenseDeleted, onGroupUpdated }: G
               </p>
               <div className="space-y-0.5">
                 {youOweList.map((item) => (
-                  <p key={`you-owe-${item.name}`} className="text-sm text-muted-foreground">
-                    You owe {item.name} <span className="text-destructive">{formatCurrency(item.amount, currencyCode)}</span>
-                  </p>
+                  <div key={`you-owe-${item.name}`} className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                    <MemberAvatar
+                      name={item.name}
+                      avatarUrl={getGroupDirectoryMember(group, item.name)?.avatarUrl}
+                      size="sm"
+                    />
+                    <p>
+                      You owe {item.name} <span className="text-destructive">{formatCurrency(item.amount, currencyCode)}</span>
+                    </p>
+                  </div>
                 ))}
               </div>
             </div>
@@ -439,9 +471,16 @@ export function GroupDetailClient({ group, onExpenseDeleted, onGroupUpdated }: G
               </p>
               <div className="space-y-0.5">
                 {oweYouList.map((item) => (
-                  <p key={`owes-you-${item.name}`} className="text-sm text-muted-foreground">
-                    {item.name} owes you <span className="text-success">{formatCurrency(item.amount, currencyCode)}</span>
-                  </p>
+                  <div key={`owes-you-${item.name}`} className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                    <MemberAvatar
+                      name={item.name}
+                      avatarUrl={getGroupDirectoryMember(group, item.name)?.avatarUrl}
+                      size="sm"
+                    />
+                    <p>
+                      {item.name} owes you <span className="text-success">{formatCurrency(item.amount, currencyCode)}</span>
+                    </p>
+                  </div>
                 ))}
               </div>
             </div>

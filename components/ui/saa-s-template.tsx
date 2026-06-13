@@ -333,9 +333,9 @@ export default function SaasTemplate({
   videoPoster,
 }: SaasTemplateProps) {
   return (
-    <main className="min-h-screen bg-background text-foreground dark:bg-black dark:text-white">
+    <>
       <Navigation />
       <Hero videoSrc={videoSrc} videoPoster={videoPoster} />
-    </main>
+    </>
   );
 }

@@ -26,6 +26,9 @@ import {
   uploadProfileAvatar,
 } from "@/lib/api/profile";
 
+const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_AVATAR_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
 const profileSchema = z
   .object({
     name: z.string().min(2, "Name must be at least 2 characters"),
@@ -55,6 +58,7 @@ type ProfileFormValues = z.infer<typeof profileSchema>;
 export function ProfileForm() {
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
@@ -139,12 +143,35 @@ export function ProfileForm() {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    if (!ALLOWED_AVATAR_MIME_TYPES.has(file.type)) {
+      event.target.value = "";
+      setSelectedPhoto(null);
+      if (photoPreview) {
+        URL.revokeObjectURL(photoPreview);
+      }
+      setPhotoPreview(null);
+      setPhotoError("Choose a JPG, PNG, or WEBP image.");
+      return;
+    }
+
+    if (file.size > MAX_AVATAR_SIZE_BYTES) {
+      event.target.value = "";
+      setSelectedPhoto(null);
+      if (photoPreview) {
+        URL.revokeObjectURL(photoPreview);
+      }
+      setPhotoPreview(null);
+      setPhotoError("Avatar must be 5 MB or smaller.");
+      return;
+    }
+
     setSelectedPhoto(file);
     const objectUrl = URL.createObjectURL(file);
     if (photoPreview) {
       URL.revokeObjectURL(photoPreview);
     }
     setPhotoPreview(objectUrl);
+    setPhotoError(null);
     setSubmitError(null);
     setSubmitSuccess(null);
   }
@@ -191,6 +218,7 @@ export function ProfileForm() {
         URL.revokeObjectURL(photoPreview);
       }
       setPhotoPreview(null);
+      setPhotoError(null);
 
       if (hasPasswordChange) {
         await signOut({ reason: "session_revoked" });
@@ -262,6 +290,7 @@ export function ProfileForm() {
         URL.revokeObjectURL(photoPreview);
       }
       setPhotoPreview(null);
+      setPhotoError(null);
       setSubmitSuccess("Profile photo removed.");
     } catch (error) {
       setSubmitError(getApiErrorMessage(error));
@@ -349,7 +378,7 @@ export function ProfileForm() {
               <Input
                 id="profilePhoto"
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 onChange={onPhotoChange}
               />
               {avatarUrl ? (
@@ -366,6 +395,7 @@ export function ProfileForm() {
               <p className="text-xs text-muted-foreground">
                 JPG, PNG or WEBP. Recommended square image.
               </p>
+              {photoError ? <p className="text-xs text-destructive">{photoError}</p> : null}
             </div>
           </div>
 

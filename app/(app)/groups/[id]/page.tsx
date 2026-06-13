@@ -17,6 +17,7 @@ interface GroupMemberRecord {
   user_id: string;
   display_name?: string | null;
   full_name?: string | null;
+  avatar_url?: string | null;
 }
 
 function memberLabel(member: GroupMemberRecord, currentUserId: string | null): string {
@@ -43,6 +44,7 @@ export default function GroupPage() {
     const memberDirectory = rawMembers.map((member) => ({
       id: member.user_id,
       name: memberLabel(member, currentUserId),
+      avatarUrl: member.avatar_url ?? null,
     }));
 
     return {

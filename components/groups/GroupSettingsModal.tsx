@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { updateGroup, createGroupInviteLink } from "@/lib/api/groups";
 import { getApiErrorMessage } from "@/lib/auth-api";
 import type { Group } from "@/lib/mock-data";
+import { MemberAvatar } from "@/components/groups/MemberAvatar";
 
 interface GroupSettingsModalProps {
   group: Group;
@@ -178,11 +179,21 @@ export function GroupSettingsModal({ group, open, onClose, onRefresh }: GroupSet
         <div className="space-y-2">
           <Label>Members ({group.members.length})</Label>
           <div className="rounded-lg border border-border divide-y divide-border max-h-44 overflow-y-auto">
-            {group.members.map((member) => (
-              <div key={member} className="px-3 py-2 text-sm text-foreground">
-                {member}
-              </div>
-            ))}
+            {group.memberDirectory?.length ? (
+              group.memberDirectory.map((member) => (
+                <div key={member.id} className="flex items-center gap-3 px-3 py-2 text-sm text-foreground">
+                  <MemberAvatar name={member.name} avatarUrl={member.avatarUrl} size="sm" />
+                  <span className="min-w-0 truncate">{member.name}</span>
+                </div>
+              ))
+            ) : (
+              group.members.map((member) => (
+                <div key={member} className="flex items-center gap-3 px-3 py-2 text-sm text-foreground">
+                  <MemberAvatar name={member} size="sm" />
+                  <span className="min-w-0 truncate">{member}</span>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
