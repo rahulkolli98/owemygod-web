@@ -127,17 +127,35 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="mt-10 grid gap-4 sm:grid-cols-2">
-            {howItWorksSteps.map((item) => (
-              <article
-                key={item.step}
-                className="rounded-xl border border-border bg-muted/40 p-6 transition-colors hover:bg-muted/60"
-              >
-                <p className="text-xs font-semibold tracking-[0.14em] text-[#ff6a55]">Step {item.step}</p>
-                <h3 className="mt-2 text-base font-semibold text-foreground">{item.title}</h3>
-                <p className="mt-2 text-sm text-muted-foreground">{item.description}</p>
-              </article>
-            ))}
+          <div className="mx-auto mt-10 max-w-3xl">
+            <ol className="space-y-8">
+              {howItWorksSteps.map((item, index) => {
+                const isLast = index === howItWorksSteps.length - 1;
+
+                return (
+                  <li key={item.step} className="relative pl-14">
+                    {!isLast ? (
+                      <span
+                        aria-hidden="true"
+                        className="absolute left-[1.08rem] top-9 h-[calc(100%+1.25rem)] w-px bg-border"
+                      />
+                    ) : null}
+
+                    <span
+                      aria-hidden="true"
+                      className="absolute left-0 top-0 inline-flex size-9 items-center justify-center rounded-full border border-border bg-background text-xs font-semibold tracking-[0.08em] text-[#ff6a55]"
+                    >
+                      {item.step}
+                    </span>
+
+                    <div className="rounded-xl border border-border bg-muted/25 p-5">
+                      <h3 className="text-base font-semibold text-foreground">{item.title}</h3>
+                      <p className="mt-2 text-sm text-muted-foreground">{item.description}</p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
           </div>
         </section>
 
