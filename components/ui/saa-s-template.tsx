@@ -54,7 +54,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
 Button.displayName = "Button";
 
-const Navigation = React.memo(() => {
+export const LandingNavbar = React.memo(() => {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
   return (
@@ -87,15 +87,15 @@ const Navigation = React.memo(() => {
         </Link>
 
         <div className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-8 md:flex">
-          <a href="#how-it-works" className="text-sm text-muted-foreground transition-colors hover:text-foreground dark:text-white/70 dark:hover:text-white">
+          <Link href="/#how-it-works" className="text-sm text-muted-foreground transition-colors hover:text-foreground dark:text-white/70 dark:hover:text-white">
             How it works
-          </a>
-          <a href="#features" className="text-sm text-muted-foreground transition-colors hover:text-foreground dark:text-white/70 dark:hover:text-white">
+          </Link>
+          <Link href="/#features" className="text-sm text-muted-foreground transition-colors hover:text-foreground dark:text-white/70 dark:hover:text-white">
             Features
-          </a>
-          <a href="#security" className="text-sm text-muted-foreground transition-colors hover:text-foreground dark:text-white/70 dark:hover:text-white">
+          </Link>
+          <Link href="/security" className="text-sm text-muted-foreground transition-colors hover:text-foreground dark:text-white/70 dark:hover:text-white">
             Security
-          </a>
+          </Link>
         </div>
 
         <div className="hidden items-center gap-3 md:flex">
@@ -125,27 +125,27 @@ const Navigation = React.memo(() => {
       {mobileMenuOpen && (
         <div className="border-t border-border bg-background/90 dark:border-white/10 dark:bg-black/90 md:hidden">
           <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-6 py-4">
-            <a
-              href="#how-it-works"
+            <Link
+              href="/#how-it-works"
               className="py-1 text-sm text-muted-foreground transition-colors hover:text-foreground dark:text-white/70 dark:hover:text-white"
               onClick={() => setMobileMenuOpen(false)}
             >
               How it works
-            </a>
-            <a
-              href="#features"
+            </Link>
+            <Link
+              href="/#features"
               className="py-1 text-sm text-muted-foreground transition-colors hover:text-foreground dark:text-white/70 dark:hover:text-white"
               onClick={() => setMobileMenuOpen(false)}
             >
               Features
-            </a>
-            <a
-              href="#security"
+            </Link>
+            <Link
+              href="/security"
               className="py-1 text-sm text-muted-foreground transition-colors hover:text-foreground dark:text-white/70 dark:hover:text-white"
               onClick={() => setMobileMenuOpen(false)}
             >
               Security
-            </a>
+            </Link>
             <div className="flex flex-col gap-2 border-t border-border pt-3 dark:border-white/10">
               <ThemeToggle />
               <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
@@ -166,7 +166,7 @@ const Navigation = React.memo(() => {
   );
 });
 
-Navigation.displayName = "Navigation";
+LandingNavbar.displayName = "LandingNavbar";
 
 const Hero = React.memo(({ videoSrc, videoPoster }: SaasTemplateProps) => {
   const [isDark, setIsDark] = React.useState(false);
@@ -334,7 +334,7 @@ export default function SaasTemplate({
 }: SaasTemplateProps) {
   return (
     <>
-      <Navigation />
+      <LandingNavbar />
       <Hero videoSrc={videoSrc} videoPoster={videoPoster} />
     </>
   );

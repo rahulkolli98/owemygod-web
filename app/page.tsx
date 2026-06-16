@@ -53,29 +53,6 @@ const howItWorksSteps = [
   },
 ];
 
-const securityHighlights = [
-  {
-    title: "Private by default",
-    description:
-      "Your groups and expenses are visible only to invited members with authenticated access.",
-  },
-  {
-    title: "Protected sessions",
-    description:
-      "Secure sign-in flow and session handling keep account access controlled across devices.",
-  },
-  {
-    title: "Reliable data storage",
-    description:
-      "Expense records are stored in a managed PostgreSQL-backed platform with built-in safeguards.",
-  },
-  {
-    title: "Transparent history",
-    description:
-      "Every expense and settlement is tracked so your group can verify balances with confidence.",
-  },
-];
-
 const faqs = [
   {
     question: "Can we split expenses unequally?",
@@ -255,35 +232,6 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="security" className="scroll-mt-24 mx-auto w-full max-w-5xl px-6 pb-24">
-          <div className="mx-auto max-w-3xl text-center">
-            <p className="text-sm font-medium uppercase tracking-[0.16em] text-[#ff6a55]">Security</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
-              Built so your group can trust every number
-            </h2>
-            <p className="mt-4 text-sm text-muted-foreground md:text-base">
-              OweMyGod is designed to keep your expense data private, protected, and auditable.
-            </p>
-          </div>
-
-          <div className="mt-10 grid gap-6 sm:grid-cols-2">
-            {securityHighlights.map((item) => (
-              <article
-                key={item.title}
-                className="rounded-xl border border-border bg-muted/40 p-6 space-y-2"
-              >
-                <h3 className="font-semibold text-foreground">{item.title}</h3>
-                <p className="text-sm text-muted-foreground">{item.description}</p>
-              </article>
-            ))}
-          </div>
-
-          <div className="mt-8 rounded-xl border border-border bg-background/70 p-4 text-center text-sm text-muted-foreground dark:bg-background/40">
-            Authentication, access controls, and clear records work together to reduce disputes and
-            protect your group data.
-          </div>
-        </section>
-
         <section className="mx-auto w-full max-w-5xl px-6 pb-24">
           <div className="rounded-2xl border border-border bg-muted/40 p-8 text-center md:p-10">
             <p className="text-sm font-medium uppercase tracking-[0.16em] text-[#ff6a55]">Ready to start</p>
@@ -306,11 +254,52 @@ export default function Home() {
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-border bg-background py-6 text-foreground dark:border-white/10 dark:bg-neutral-950/90">
-        <p className="text-center text-xs text-muted-foreground dark:text-white/60">
+      <footer className="border-t border-border bg-background text-foreground dark:border-white/10 dark:bg-neutral-950/90">
+        <div className="mx-auto grid w-full max-w-5xl gap-8 px-6 py-10 md:grid-cols-3">
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#ff6a55]">OweMyGod</h3>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Split bills, track balances, and settle up without awkward follow-ups.
+            </p>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-semibold text-foreground">Explore</h4>
+            <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+              <li>
+                <a href="#how-it-works" className="transition-colors hover:text-foreground">
+                  How it works
+                </a>
+              </li>
+              <li>
+                <a href="#features" className="transition-colors hover:text-foreground">
+                  Features
+                </a>
+              </li>
+              <li>
+                <Link href="/security" className="transition-colors hover:text-foreground">
+                  Security
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-semibold text-foreground">Get Started</h4>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link href="/signup" className={cn(buttonVariants({ size: "sm" }))}>
+                Create account
+              </Link>
+              <Link href="/login" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+                Login
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t border-border px-6 py-4 text-center text-xs text-muted-foreground dark:border-white/10 dark:text-white/60">
           &copy; {new Date().getFullYear()} OweMyGod! Thou shalt not forget who paid for dinner.
-        </p>
+        </div>
       </footer>
     </div>
   );
